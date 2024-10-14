@@ -1,8 +1,3 @@
-"""
-terminal input that receives a POST request with a JSON body containing an IDL document
-which will be either OpenAPI or AsyncAPI. It will call for the generation
-of code that can interact with the API described in the IDL document.
-"""
 import json
 import os
 import yaml
@@ -10,22 +5,27 @@ import requests
 
 
 def update():
+    """
+    Update the codebase based on the IDL document
+    :return:
+    """
     idl = load_idl_document()  # returns IDL as a python dict
-
-    print(idl)
 
     if idl is None:
         return
-    # check if the idl is openapi or asyncapi
-    # if idl["openapi"]:
-    #     # TODO: call the openapi code generator
-    # elif idl["asyncapi"]:
-    #     # TODO: call the asyncapi code generator
+
+    if idl["openapi"]:
+        print("OpenAPI")
+        # TODO: call the openapi code generator
+    elif idl["asyncapi"]:
+        print("AsyncAPI")
+        # TODO: call the asyncapi code generator
 
 
 def load_idl_document():
     """
     Load the IDL document from the terminal input
+    :return: IDL as a python dict
     """
     idl_path = input("Enter the IDL path: ")
 
@@ -37,7 +37,11 @@ def load_idl_document():
 
 
 def load_idl_document_from_filepath(file_path):
-    # check if the file is valid
+    """
+    Load the IDL document from a file path
+    :param file_path:
+    :return: IDL as a python dict
+    """
     if not os.path.isfile(file_path):
         print("Invalid file path")
         return
@@ -57,6 +61,8 @@ def load_idl_document_from_filepath(file_path):
 def load_idl_document_from_url(url):
     """
     Load the IDL document from a URL
+    :param url: URL of the raw IDL document
+    :return: IDL as a python dict
     """
     response = requests.get(url, allow_redirects=True)
     content = response.content.decode("utf-8")
@@ -78,7 +84,3 @@ def load_idl_document_from_url(url):
     else:
         print("Invalid file type")
         return
-
-
-# playtest - remove before deployment
-update()
