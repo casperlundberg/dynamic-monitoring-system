@@ -1,7 +1,25 @@
+def remove_slash_from_string(string: str):
+    return string.replace("/", "")
+
+
+# def get_value_between_curly_brackets(string: str):
+#     return string.split("{")[1].split("}")[0]
+
+# def get_list_of_values_between_curly_brackets(string: str):
+#     return [part.split("}")[0] for part in string.split("{")[1:]]
+
+def get_dict_of_values_between_curly_brackets(string: str):
+    return {part.split("}")[0]: 0 for part in string.split("{")[1:]}
+
+
+def capitalize_first_letter(string: str):
+    return string[0].upper() + string[1:]
+
+
 class Generator:
     def __init__(self, spec: dict):
         self.spec = spec
-        self.code = ""
+        self.files = []
 
     def add_imports(self):
         paths = self.spec.get("paths")
@@ -25,55 +43,35 @@ class Generator:
         return params
 
 
-class PathGenerator:
+class PathsGenerator:
     def __init__(self, paths: dict):
         self.paths = paths
         self.imports = ""
         self.url = ""
+        self.parameters = {}
 
     def generate(self):
-        self.code += self.generate_request()
-        self.code += self.generate_response()
+        for path in self.paths:
 
-    def generate_request(self):
-        request = self.spec.get("paths").get(self.path).get("request")
-        request_code = f'response = requests.{request.get("method")}('
-        request_code += f'{self.generate_url()})\n'
-        return request_code
+            if
 
-    def generate_url(self):
-        url = f'server_url + path_url + {self.generate_parameters()}'
-        return url
+            if "{" and "}" in path:
+                self.parameters = get_dict_of_values_between_curly_brackets(
+                    path)
+            self.url = path
 
-    def generate_parameters(self):
-        params = ""
-        for param in self.spec.get("paths").get(self.path).get("parameters"):
-            params += f'{param.get("name")}, '
-        return params
+            filename = remove_slash_from_string(path)
+            classname = capitalize_first_letter(filename)
+            self.imports = self.generate_imports(filename, classname)
 
-    def generate_response(self):
-        response = self.spec.get("paths").get(self.path).get("response")
-        response_code = f'body = response.{response.get("method")}()\n'
-        response_code += f'{self.generate_model()}'
-        response_code += f'{self.generate_metrics()}'
-        response_code += f'{self.generate_ui_update()}'
-        return response_code
+            self.generate_parameters(self.parameters)
 
-    def generate_model(self):
-        model = self.spec.get("paths").get(self.path).get("model")
-        model_code = f'{model.get("name")} = {model.get("class")}(**body)\n'
-        return model_code
+    def generate_parameters(self, input_param: dict):
+        for param in input_param:
+            if param in self.parameters:
+                self.parameters[param] = input_param.get(param)
 
-    def generate_metrics(self):
-        metrics = self.spec.get("paths").get(self.path).get("metrics")
-        metrics_code = "metrics = {\n"
-        for metric in metrics:
-            metrics_code += f'"{metric}": response.{metric},\n'
-        metrics_code += "}\n"
-        return metrics_code
-
-    def generate_ui_update(self):
-        ui_update = self.spec.get("paths").get(self.path).get("ui_update")
-        ui_update_code = "ui.update_metrics(metrics)\n"
-        ui_update_code += f'ui.update_{ui_update.get("model")}({ui_update.get("model")})\n'
-        return ui_update_code
+    def generate_imports(self, filename: str, classname: str):
+        code = "import requests\n"
+        code += "from src.core.ui import ui\n"
+        code += f'"from src.generated_code.models.{filename} import {classname}\n"'

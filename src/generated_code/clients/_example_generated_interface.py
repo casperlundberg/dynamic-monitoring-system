@@ -1,12 +1,10 @@
-# Imports can be added in __init__.py
-# for the generated package folder
 import requests
 
-from src.generated_code.models.pet import Pet
+from src.generated_code.models.{filename} import {classname}
 from src.core.ui import ui
 
-# server + path + parameters
-url = "https://petstore3.swagger.io/api/v3" + "/pet/" + "2"
+# server + path
+url = {server_url} + {path_url}
 
 response = requests.get(url)
 body = response.json()
