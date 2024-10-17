@@ -2,7 +2,7 @@ from typing import Optional, Dict, Any, Union
 
 from pydantic import BaseModel
 
-from src.core.generators.open_api.models import Reference
+from src.core.generators.open_api.models.reference import Reference
 
 
 class Response(BaseModel):

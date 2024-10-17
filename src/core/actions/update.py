@@ -4,30 +4,33 @@ import yaml
 import requests
 
 
-def update():
+def update(input):
     """
     Update the codebase based on the IDL document
     :return:
     """
-    idl = load_idl_document()  # returns IDL as a python dict
+    idl = load_idl_document(input)  # returns IDL as a python dict
 
     if idl is None:
         return
 
     if idl["openapi"]:
-        print("OpenAPI")
+        print(idl)
         # TODO: call the openapi code generator
     elif idl["asyncapi"]:
         print("AsyncAPI")
         # TODO: call the asyncapi code generator
 
 
-def load_idl_document():
+def load_idl_document(input):
     """
     Load the IDL document from the terminal input
     :return: IDL as a python dict
     """
-    idl_path = input("Enter the IDL path: ")
+    if input:
+        idl_path = input
+    else:
+        idl_path = input("Enter the IDL path: ")
 
     # check if the path is an url or a file path
     if idl_path.startswith("http"):
@@ -84,3 +87,6 @@ def load_idl_document_from_url(url):
     else:
         print("Invalid file type")
         return
+
+
+update("C:/Users/Desktop-Lumpa/Downloads/openapi.json")

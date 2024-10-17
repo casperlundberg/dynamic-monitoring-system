@@ -1,7 +1,7 @@
 from typing import Optional, Any, Dict, Union
 from pydantic import BaseModel
 
-from src.core.generators.open_api.models import Reference
+from src.core.generators.open_api.models.reference import Reference
 
 
 class ExternalDocs(BaseModel):
@@ -59,7 +59,7 @@ class Example(BaseModel):
     externalValue: Optional[str] = None
 
 
-class Encoding:
+class Encoding(BaseModel):
     """
     Model for the encoding object in the OpenAPI specification.
     """
@@ -68,6 +68,9 @@ class Encoding:
     style: Optional[str] = None
     explode: Optional[bool] = None
     allowReserved: Optional[bool] = None
+
+    # class Config:
+    #     arbitrary_types_allowed = True
 
 
 class MediaType(BaseModel):
@@ -78,3 +81,32 @@ class MediaType(BaseModel):
     example: Optional[Any] = None
     examples: Optional[Dict[str, Union[Reference, Example]]] = None
     encoding: Optional[Dict[str, Encoding]] = None
+
+
+class Link(BaseModel):
+    """
+    Model for the link object in the OpenAPI specification.
+    """
+    operationRef: Optional[str] = None
+    operationId: Optional[str] = None
+    parameters: Optional[Dict[str, Any]] = None
+    requestBody: Optional[Any] = None
+    description: Optional[str] = None
+    server: Optional[Dict[str, Any]] = None
+
+
+class Header(BaseModel):
+    """
+    Model for the header object in the OpenAPI specification.
+    """
+    description: Optional[str] = None
+    required: Optional[bool] = None
+    deprecated: Optional[bool] = None
+    allowEmptyValue: Optional[bool] = None
+    style: Optional[str] = None
+    explode: Optional[bool] = None
+    allowReserved: Optional[bool] = None
+    schema: Optional[Union[Reference, Dict[str, Any]]] = None
+    example: Optional[Any] = None
+    examples: Optional[Dict[str, Union[Reference, Example]]] = None
+    content: Optional[Dict[str, MediaType]] = None

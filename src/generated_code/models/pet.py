@@ -1,7 +1,7 @@
 from typing import List
 from pydantic import BaseModel
 
-from src.core.generators.open_api.models import *
+from src.core.generators.open_api.models.misc import Tag
 
 
 class Category:
