@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 
-from src.core.generators.openAPI.models.misc import Tag, License, Contact, \
+from src.core.generators.open_api.models.misc import Tag, License, Contact, \
     Info, ExternalDocs
 
 

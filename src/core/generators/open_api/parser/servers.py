@@ -3,7 +3,7 @@ Parser for the servers keyword in the OpenAPI specification.
 """
 from typing import List, Dict, Any
 
-from src.core.generators.openAPI.models.server import Server
+from src.core.generators.open_api.models.server import Server
 
 
 def parse_servers(servers: List[Dict[str, Any]]) -> List[Server]:
