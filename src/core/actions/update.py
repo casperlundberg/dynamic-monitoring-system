@@ -2,6 +2,7 @@ import json
 import os
 import yaml
 import requests
+from src.core.generators.open_api.generator.generator import Generator
 
 
 def update(input):
@@ -15,8 +16,8 @@ def update(input):
         return
 
     if idl["openapi"]:
-        print(idl)
-        # TODO: call the openapi code generator
+        code_gen = Generator(idl)
+        code_gen.generate()
     elif idl["asyncapi"]:
         print("AsyncAPI")
         # TODO: call the asyncapi code generator

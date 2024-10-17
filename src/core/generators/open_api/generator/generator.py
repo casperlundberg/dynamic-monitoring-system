@@ -1,15 +1,19 @@
-def remove_slash_from_string(string: str):
-    return string.replace("/", "")
+def replace_slash(string: str):
+    return string.replace("/", "_")
 
 
-# def get_value_between_curly_brackets(string: str):
-#     return string.split("{")[1].split("}")[0]
+def remove_brackets(string: str):
+    return string.replace("{", "").replace("}", "")
 
-# def get_list_of_values_between_curly_brackets(string: str):
-#     return [part.split("}")[0] for part in string.split("{")[1:]]
 
-def get_dict_of_values_between_curly_brackets(string: str):
+def get_dict_of_path_params(string: str):
     return {part.split("}")[0]: 0 for part in string.split("{")[1:]}
+
+
+def get_dict_of_query_params(string: str):
+    query_string = string.split("?")[1] if "?" in string else ""
+    return {param.split("=")[0]: None for param in query_string.split("&") if
+            "=" in param}
 
 
 def capitalize_first_letter(string: str):
@@ -21,57 +25,87 @@ class Generator:
         self.spec = spec
         self.files = []
 
-    def add_imports(self):
-        paths = self.spec.get("paths")
-        self.code += "import requests\n"
-        self.code += f'"from src.generated_code.models.{filename} import {schema}\n"'
-        self.code += "from src.core.ui import ui\n"
-
-    def generate_server_url_variable(self, index: int):
-        server_url = "server_url = " + self.spec.get("servers")[index].get(
-            "url")
-        return server_url
-
-    def generate_path_url_variable(self, path: str):
-        path_url = "path_url = " + f'"{path}"'
-        return path_url
-
-    def generate_parameters(self):
-        params = ""
-        for param in self.spec.paths.get(path).get("parameters"):
-            params += f'{param.get("name")} = ' + f'"{param.get("value")}"\n'
-        return params
-
-
-class PathsGenerator:
-    def __init__(self, paths: dict):
-        self.paths = paths
-        self.imports = ""
-        self.url = ""
-        self.parameters = {}
-
     def generate(self):
-        for path in self.paths:
+        paths = self.spec.get("paths")
+        for path in paths:
+            path_str = str(path)
+            path_obj = paths[path]
+            server_url = self.spec.get("servers")[0].get("url")
+            file_gen = CodeFileGenerator(path_obj, path_str, server_url)
 
-            if
+            code_string = file_gen.generate_code()
 
-            if "{" and "}" in path:
-                self.parameters = get_dict_of_values_between_curly_brackets(
-                    path)
-            self.url = path
+            if code_string is None:
+                continue
+            print("====================================")
+            print("Code generated for path:", path_str)
+            print("Will be saved in file:",
+                  file_gen.filename + ".py with a dataclass named ",
+                  file_gen.classname)
+            print("http method:", file_gen.http_method)
+            print()
+            print(code_string)
+            print()
+            print()
+            print()
 
-            filename = remove_slash_from_string(path)
-            classname = capitalize_first_letter(filename)
-            self.imports = self.generate_imports(filename, classname)
 
-            self.generate_parameters(self.parameters)
+class CodeFileGenerator:
+    def __init__(self, path: dict, path_str, server_url: str):
+        self.path = path
+        self.path_str = path_str
+        self.server_url = server_url
+        self.imports = None
+        self.url = server_url + path_str
+        self.param_in = None
 
-    def generate_parameters(self, input_param: dict):
-        for param in input_param:
-            if param in self.parameters:
-                self.parameters[param] = input_param.get(param)
+        self.should_generate = False
+        self.http_method = None
 
-    def generate_imports(self, filename: str, classname: str):
-        code = "import requests\n"
+        self.filename = replace_slash(remove_brackets(path_str))
+
+        # Classname for the dataclass should be created from schema name
+        # Nor from the filename since schemas can be reused and tracked better
+        self.classname = capitalize_first_letter(self.filename[1:])
+
+        self.set_param_in()
+        self.generate_imports()
+
+    def set_param_in(self):
+        for operation in self.path:
+
+            if operation == "get":  # No need to check for other http methods
+                self.should_generate = True
+                self.http_method = operation
+
+                open_api_parameters = self.path[operation].get(
+                    "parameters")
+
+                print("path:", self.path_str.upper(), "\t\thttp:", operation,
+                      "\t\tGenerate?:", self.should_generate)
+                print("operation:",
+                      self.path[operation])
+
+                for param in open_api_parameters:
+                    self.param_in = param.get("in")
+            else:
+                self.should_generate = False
+
+    def generate_code(self):
+        if self.should_generate:
+            code = f"{self.imports}\n"
+            code += f'url = "{self.url}"\n'
+            code += f'params_in = "{self.param_in}"\n\n'
+            code += f"client = RequestClass(url, params_in)\n"
+            code += "client.make_request()\n"
+            code += "ui.update()\n"
+
+            return code
+
+        return None
+
+    def generate_imports(self):
+        code = "from src.core.generators.open_api.generator.request_class import RequestClass\n"
         code += "from src.core.ui import ui\n"
-        code += f'"from src.generated_code.models.{filename} import {classname}\n"'
+        code += f'from src.generated_code.models.{self.filename} import {self.classname}\n'
+        self.imports = code
