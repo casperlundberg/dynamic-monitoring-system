@@ -1,3 +1,6 @@
+from colorama import Fore, Back, Style
+
+
 def replace_slash(string: str):
     return string.replace("/", "_")
 
@@ -35,16 +38,19 @@ class Generator:
 
             code_string = file_gen.generate_code()
 
-            if code_string is None:
-                continue
             print("====================================")
-            print("Code generated for path:", path_str)
+            print("Code generated for path:", Fore.GREEN + path_str)
+            print(Style.RESET_ALL)
             print("Will be saved in file:",
-                  file_gen.filename + ".py with a dataclass named ",
-                  file_gen.classname)
-            print("http method:", file_gen.http_method)
+                  Fore.GREEN + file_gen.filename + ".py" + Style.RESET_ALL,
+                  "with a dataclass named", Fore.GREEN + file_gen.classname)
+            print(Style.RESET_ALL)
+            print("http method:", Fore.GREEN, file_gen.http_method)
+            print(Style.RESET_ALL)
             print()
+            print(Fore.LIGHTCYAN_EX)
             print(code_string)
+            print(Style.RESET_ALL)
             print()
             print()
             print()
@@ -73,21 +79,25 @@ class CodeFileGenerator:
 
     def set_param_in(self):
         for operation in self.path:
-
             if operation == "get":  # No need to check for other http methods
                 self.should_generate = True
                 self.http_method = operation
 
-                open_api_parameters = self.path[operation].get(
-                    "parameters")
+                for key in self.path["get"]:
+                    if key == "parameters":
+                        params = self.path["get"]["parameters"]
+                        print(Fore.LIGHTGREEN_EX + "params", params)
+                        print(Style.RESET_ALL)
+                        if len(params) > 0:
+                            for param in params:
+                                if param["in"] == "path":
+                                    self.param_in = "path"
+                                elif param["in"] == "query":
+                                    self.param_in = "query"
+                                # else:
+                                #     self.should_generate = False
+                                #     break
 
-                print("path:", self.path_str.upper(), "\t\thttp:", operation,
-                      "\t\tGenerate?:", self.should_generate)
-                print("operation:",
-                      self.path[operation])
-
-                for param in open_api_parameters:
-                    self.param_in = param.get("in")
             else:
                 self.should_generate = False
 
