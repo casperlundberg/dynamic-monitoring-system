@@ -1,4 +1,4 @@
-from colorama import Fore, Back, Style
+from colorama import Fore, Style
 
 
 def replace_slash(string: str):
@@ -47,6 +47,8 @@ class Generator:
             print(Style.RESET_ALL)
             print("http method:", Fore.GREEN, file_gen.http_method)
             print(Style.RESET_ALL)
+            print("should_generate:", Fore.GREEN, file_gen.should_generate)
+            print(Style.RESET_ALL)
             print()
             print(Fore.LIGHTCYAN_EX)
             print(code_string)
@@ -79,24 +81,21 @@ class CodeFileGenerator:
 
     def set_param_in(self):
         for operation in self.path:
+            self.http_method = operation
             if operation == "get":  # No need to check for other http methods
                 self.should_generate = True
-                self.http_method = operation
 
                 for key in self.path["get"]:
                     if key == "parameters":
                         params = self.path["get"]["parameters"]
-                        print(Fore.LIGHTGREEN_EX + "params", params)
-                        print(Style.RESET_ALL)
+
                         if len(params) > 0:
                             for param in params:
                                 if param["in"] == "path":
                                     self.param_in = "path"
                                 elif param["in"] == "query":
                                     self.param_in = "query"
-                                # else:
-                                #     self.should_generate = False
-                                #     break
+                break
 
             else:
                 self.should_generate = False
