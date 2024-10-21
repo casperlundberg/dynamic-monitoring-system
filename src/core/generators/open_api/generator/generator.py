@@ -34,31 +34,32 @@ class Generator:
             path_str = str(path)
             path_obj = paths[path]
             server_url = self.spec.get("servers")[0].get("url")
-            file_gen = CodeFileGenerator(path_obj, path_str, server_url)
+            file_gen = ClientFileGenerator(path_obj, path_str, server_url)
 
-            code_string = file_gen.generate_code()
+            # code_string = file_gen.generate_code()
+            self.files.append(file_gen)
 
-            print("====================================")
-            print("Code generated for path:", Fore.GREEN + path_str)
-            print(Style.RESET_ALL)
-            print("Will be saved in file:",
-                  Fore.GREEN + file_gen.filename + ".py" + Style.RESET_ALL,
-                  "with a dataclass named", Fore.GREEN + file_gen.classname)
-            print(Style.RESET_ALL)
-            print("http method:", Fore.GREEN, file_gen.http_method)
-            print(Style.RESET_ALL)
-            print("should_generate:", Fore.GREEN, file_gen.should_generate)
-            print(Style.RESET_ALL)
-            print()
-            print(Fore.LIGHTCYAN_EX)
-            print(code_string)
-            print(Style.RESET_ALL)
-            print()
-            print()
-            print()
+            # print("====================================")
+            # print("Code generated for path:", Fore.GREEN + path_str)
+            # print(Style.RESET_ALL)
+            # print("Will be saved in file:",
+            #       Fore.GREEN + file_gen.filename + ".py" + Style.RESET_ALL,
+            #       "with a dataclass named", Fore.GREEN + file_gen.classname)
+            # print(Style.RESET_ALL)
+            # print("http method:", Fore.GREEN, file_gen.http_method)
+            # print(Style.RESET_ALL)
+            # print("should_generate:", Fore.GREEN, file_gen.should_generate)
+            # print(Style.RESET_ALL)
+            # print()
+            # print(Fore.LIGHTCYAN_EX)
+            # print(code_string)
+            # print(Style.RESET_ALL)
+            # print()
+            # print()
+            # print()
 
 
-class CodeFileGenerator:
+class ClientFileGenerator:
     def __init__(self, path: dict, path_str, server_url: str):
         self.path = path
         self.path_str = path_str
@@ -101,13 +102,14 @@ class CodeFileGenerator:
                 self.should_generate = False
 
     def generate_code(self):
+        request_class_param_name = "client"
         if self.should_generate:
             code = f"{self.imports}\n"
             code += f'url = "{self.url}"\n'
             code += f'params_in = "{self.param_in}"\n\n'
-            code += f"client = RequestClass(url, params_in)\n"
-            code += "client.make_request()\n"
-            code += "ui.update()\n"
+            code += f"{request_class_param_name} = RequestClass(url, params_in)\n"
+            code += f"{request_class_param_name}.make_request()\n"
+            code += f"ui.update({request_class_param_name})\n"
 
             return code
 

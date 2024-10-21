@@ -3,6 +3,7 @@ import os
 import yaml
 import requests
 from src.core.generators.open_api.generator.generator import Generator
+from src.core.generators.open_api.deployer import Deployer
 
 
 def update(input):
@@ -18,6 +19,9 @@ def update(input):
     if idl["openapi"]:
         code_gen = Generator(idl)
         code_gen.generate()
+        deployer = Deployer(code_gen.files)
+        deployer.deploy()
+
     elif idl["asyncapi"]:
         print("AsyncAPI")
         # TODO: call the asyncapi code generator
