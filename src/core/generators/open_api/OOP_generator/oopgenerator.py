@@ -53,55 +53,32 @@ class ClientFileGenerator:
         self.filename = filename.replace("{", "").replace("}", "")[1:]
 
     def parse_classname(self):
-        self.classname = self.filename[0].upper() + self.filename[1:]
+        # classname = self.filename[0].upper() + self.filename[1:]
+        classname = self.filename
+        classname = classname[0].upper() + classname[1:]
+
+        # Upper case the first letter after each underscore
+        for i in range(len(classname)):
+            if classname[i] == "_":
+                classname = (classname[:i + 1]
+                             + classname[i + 1].upper()
+                             + classname[i + 2:])
+
+        classname = classname.replace("_", "")
+        self.classname = classname
 
     def generate_code(self):
         self_server_var_name = "self.SERVER"
         self_path_var_name = "self.PATH"
-        self.code_string = f"""
-import requests
-
-
-class {self.classname}:
+        
+        self.code_string = f"""class {self.classname}:
     def __init__(self):
         {self_server_var_name} = "{self.server_url}"
         {self_path_var_name} = "{self.path_str}"
         self.path_params = {self.path_params}
         self.request_args = {{}}
-        self.url = {self_server_var_name} + {self_path_var_name}
         
+        self.url = {self_server_var_name} + {self_path_var_name}
         self.response = None
         self.metrics = {{}}
-        
-    def set_path_params(self, params):
-        self.path_params = params
-        
-    def set_query_params(self, params):
-        self.request_args['params'] = params
-        
-    def set_header_params(self, params):
-        self.request_args['headers'] = params
-    
-    def set_cookie_params(self, params):
-        self.request_args['cookies'] = params
-    
-    def make_request(self):
-        self.url = self.replace_placeholders(self.url)
-        
-        if self.request_args:
-            self.response = requests.get(self.url, **self.request_args)
-        else:
-            self.response = requests.get(self.url)
-        
-        self.metrics = {{
-            "response_time": self.response.elapsed.total_seconds(),
-            "status_code": self.response.status_code,
-            "content_type": self.response.headers["Content-Type"],
-            "content_length": self.response.headers["Content-Length"],
-        }}
-        
-    def replace_placeholders(self, url: str) -> str:
-        for key, value in self.path_params.items():
-            url = url.replace(f"{{{{key}}}}", str(value))
-        return url
         """
