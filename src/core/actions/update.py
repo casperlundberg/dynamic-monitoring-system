@@ -4,103 +4,87 @@ import yaml
 import requests
 from src.core.generators.open_api.generator.generator import Generator
 from src.core.generators.open_api.deployer import Deployer
-
 from src.core.generators.open_api.OOP_generator.oopgenerator import \
     OOPGenerator
 
 
-def update(input):
-    """
-    Update the codebase based on the IDL document
-    :return:
-    """
-    idl = load_idl_document(input)  # returns IDL as a python dict
+class UpdateAction:
+    def __init__(self):
+        self.input_path = None
+        self.idl = self.load_idl_document()
+        self.ui_classnames = []
 
-    if idl is None:
-        return
+    def set_input_path(self, input_path):
+        self.input_path = input_path
 
-    if idl["openapi"]:
-        oop_generator = OOPGenerator(idl)
-        oop_generator.generate_code_file_obj()
-        oop_generator.generate_code()
-        deployer = Deployer(oop_generator.files)
-        deployer.deploy()
+    def load_idl_document(self):
+        if self.input_path is None:
+            raise ValueError("Invalid input path")
+        if self.input_path.startswith("http"):
+            return self.load_idl_document_from_url(self.input_path)
+        else:
+            return self.load_idl_document_from_filepath(self.input_path)
 
-        # code_gen = Generator(idl)
-        # code_gen.files_to_generate()
-        # deployer = Deployer(code_gen.files)
-        # deployer.deploy()
+    def load_idl_document_from_filepath(self, file_path):
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError("Invalid file path")
 
-    elif idl["asyncapi"]:
+        if file_path.endswith(".yaml") or file_path.endswith(".yml"):
+            return yaml.load(open(file_path, 'r'), Loader=yaml.FullLoader)
+        elif file_path.endswith(".json"):
+            return json.load(open(file_path, 'r'))
+        else:
+            raise ValueError("Invalid file type")
+
+    def load_idl_document_from_url(self, url):
+        response = requests.get(url, allow_redirects=True)
+        if response.status_code != 200:
+            raise ValueError("Invalid URL")
+
+        content = response.content.decode("utf-8")
+        if not (content.startswith("{") or content.startswith(
+                "openapi") or content.startswith("asyncapi")):
+            raise ValueError("Invalid IDL document")
+
+        if url.endswith(".yaml") or url.endswith(".yml"):
+            return yaml.load(content, Loader=yaml.FullLoader)
+        elif url.endswith(".json"):
+            return json.loads(content)
+        else:
+            raise ValueError("Invalid file type")
+
+    def update(self):
+        if self.idl is None:
+            return
+
+        if "openapi" in self.idl:
+            self.handle_openapi()
+        elif "asyncapi" in self.idl:
+            self.handle_asyncapi()
+
+    def handle_openapi(self):
+        oop_generator = OOPGenerator(self.idl)
+        oop_generator.generate_client_file_obj()
+        oop_generator.generate_client_code()
+
+        oop_generator.generate_ui_file_obj()
+        oop_generator.generate_ui_code()
+
+        for ui_file in oop_generator.ui_files:
+            self.ui_classnames.append(ui_file.classname)
+
+        deployer = Deployer(oop_generator)
+        deployer.deploy_clients()
+        deployer.deploy_uis()
+
+    def handle_asyncapi(self):
         print("AsyncAPI")
         # TODO: call the asyncapi code generator
 
+    def get_panel_classes(self):
+        return self.panel_classes
 
-def load_idl_document(input):
-    """
-    Load the IDL document from the terminal input
-    :return: IDL as a python dict
-    """
-    if input:
-        idl_path = input
-    else:
-        idl_path = input("Enter the IDL path: ")
-
-    # check if the path is an url or a file path
-    if idl_path.startswith("http"):
-        return load_idl_document_from_url(idl_path)
-    else:
-        return load_idl_document_from_filepath(idl_path)
-
-
-def load_idl_document_from_filepath(file_path):
-    """
-    Load the IDL document from a file path
-    :param file_path:
-    :return: IDL as a python dict
-    """
-    if not os.path.isfile(file_path):
-        print("Invalid file path")
-        return
-
-    # check the file type
-    if file_path.endswith(".yaml") or file_path.endswith(".yml"):
-        # yml to python dict
-        return yaml.load(open(file_path, 'r'), Loader=yaml.FullLoader)
-    elif file_path.endswith(".json"):
-        # json to python dict
-        return json.load(open(file_path, 'r'))
-    else:
-        print("Invalid file type")
-        return
-
-
-def load_idl_document_from_url(url):
-    """
-    Load the IDL document from a URL
-    :param url: URL of the raw IDL document
-    :return: IDL as a python dict
-    """
-    response = requests.get(url, allow_redirects=True)
-    content = response.content.decode("utf-8")
-
-    if response.status_code != 200:
-        print("Invalid URL")
-        return
-
-    if not (content.startswith("{") or content.startswith(
-            "openapi") or content.startswith("asyncapi")):
-        print("Invalid IDL document")
-        return
-
-    # check the file type
-    if url.endswith(".yaml") or url.endswith(".yml"):
-        return yaml.load(content, Loader=yaml.FullLoader)
-    elif url.endswith(".json"):
-        return json.loads(content)
-    else:
-        print("Invalid file type")
-        return
-
-
-update("C:/Users/Desktop-Lumpa/Downloads/openapi.json")
+# Example usage
+# if __name__ == "__main__":
+#     action = UpdateAction("C:/Users/Desktop-Lumpa/Downloads/openapi.json")
+#     action.update()
