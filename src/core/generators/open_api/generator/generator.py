@@ -28,7 +28,7 @@ class Generator:
         self.spec = spec
         self.files = []
 
-    def generate(self):
+    def files_to_generate(self):
         paths = self.spec.get("paths")
         for path in paths:
             path_str = str(path)
@@ -36,27 +36,7 @@ class Generator:
             server_url = self.spec.get("servers")[0].get("url")
             file_gen = ClientFileGenerator(path_obj, path_str, server_url)
 
-            # code_string = file_gen.generate_code()
             self.files.append(file_gen)
-
-            # print("====================================")
-            # print("Code generated for path:", Fore.GREEN + path_str)
-            # print(Style.RESET_ALL)
-            # print("Will be saved in file:",
-            #       Fore.GREEN + file_gen.filename + ".py" + Style.RESET_ALL,
-            #       "with a dataclass named", Fore.GREEN + file_gen.classname)
-            # print(Style.RESET_ALL)
-            # print("http method:", Fore.GREEN, file_gen.http_method)
-            # print(Style.RESET_ALL)
-            # print("should_generate:", Fore.GREEN, file_gen.should_generate)
-            # print(Style.RESET_ALL)
-            # print()
-            # print(Fore.LIGHTCYAN_EX)
-            # print(code_string)
-            # print(Style.RESET_ALL)
-            # print()
-            # print()
-            # print()
 
 
 class ClientFileGenerator:
@@ -71,11 +51,11 @@ class ClientFileGenerator:
         self.should_generate = False
         self.http_method = None
 
-        self.filename = replace_slash(remove_brackets(path_str))
+        self.filename = replace_slash(remove_brackets(path_str))[1:]
 
         # Classname for the dataclass should be created from schema name
         # Nor from the filename since schemas can be reused and tracked better
-        self.classname = capitalize_first_letter(self.filename[1:])
+        self.classname = capitalize_first_letter(self.filename)
 
         self.set_param_in()
         self.generate_imports()
@@ -109,7 +89,7 @@ class ClientFileGenerator:
             code += f'params_in = "{self.param_in}"\n\n'
             code += f"{request_class_param_name} = RequestClass(url, params_in)\n"
             code += f"{request_class_param_name}.make_request()\n"
-            code += f"ui.update({request_class_param_name})\n"
+            # code += f"ui.update({request_class_param_name})\n"
 
             return code
 
@@ -117,6 +97,6 @@ class ClientFileGenerator:
 
     def generate_imports(self):
         code = "from src.core.generators.open_api.generator.request_class import RequestClass\n"
-        code += "from src.core.ui import ui\n"
+        # code += "from src.core.ui import ui\n"
         code += f'from src.generated_code.models.{self.filename} import {self.classname}\n'
         self.imports = code

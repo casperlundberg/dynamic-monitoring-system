@@ -5,6 +5,9 @@ import requests
 from src.core.generators.open_api.generator.generator import Generator
 from src.core.generators.open_api.deployer import Deployer
 
+from src.core.generators.open_api.OOP_generator.oopgenerator import \
+    OOPGenerator
+
 
 def update(input):
     """
@@ -17,10 +20,16 @@ def update(input):
         return
 
     if idl["openapi"]:
-        code_gen = Generator(idl)
-        code_gen.generate()
-        deployer = Deployer(code_gen.files)
+        oop_generator = OOPGenerator(idl)
+        oop_generator.generate_code_file_obj()
+        oop_generator.generate_code()
+        deployer = Deployer(oop_generator.files)
         deployer.deploy()
+
+        # code_gen = Generator(idl)
+        # code_gen.files_to_generate()
+        # deployer = Deployer(code_gen.files)
+        # deployer.deploy()
 
     elif idl["asyncapi"]:
         print("AsyncAPI")
