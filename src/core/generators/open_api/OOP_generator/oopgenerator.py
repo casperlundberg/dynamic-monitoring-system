@@ -39,14 +39,6 @@ class OOPGenerator:
         for file in self.ui_files:
             file.generate_code()
 
-    def generate_ui_factory(self):
-        # create a superClass that check the input string and creates the correct ui class
-        filename = "UIFactory.py"
-        path = os.path.join(ROOT_DIR, GENERATED_CODE_FOLDER, GENERATED_CODE_UI_FOLDER, filename)
-        if os.path.exists(path):
-            # with open()
-
-
 
 class ClientFileGenerator:
     def __init__(self, path: dict, path_str, server_url: str):
@@ -115,34 +107,18 @@ class ClientFileGenerator:
 
 
 class UIFileGenerator:
-    def __init__(self, path: dict, path_str, server_url: str):
+    def __init__(self, path: dict, path_str):
         self.path = path
         self.path_str = path_str
-        self.server_url = server_url
         self.imports = None
-        self.url = server_url + path_str
-
-        self.path_params = None
-
-        self.should_generate = False
-        self.http_method = None
 
         self.filename = None
-
-        # Classname for the dataclass should be created from schema name
-        # Nor from the filename since schemas can be reused and tracked better
         self.classname = None
 
         self.code_string = ""
 
-        self.parse_path_params()
         self.parse_filename()
         self.parse_classname()
-
-    def parse_path_params(self):
-        # get the path parameters inside {}
-        self.path_params = {part.split("}")[0]: 0 for part in
-                            self.path_str.split("{")[1:]}
 
     def parse_filename(self):
         filename = self.path_str.replace("/", "_")
@@ -164,5 +140,30 @@ class UIFileGenerator:
         self.classname = classname
 
     def generate_code(self):
-        self_server_var_name = "self.SERVER"
-        self_path_var_name = "self.PATH"
+        self.code_string = f"""class {self.classname}:
+    def __init__(self):
+        
+        
+        """
+
+# class UIFactoryGenerator:
+#     def __init__(self, ui_files):
+#         self.ui_files = ui_files
+#         self.classname = "UIFactory"
+#         self.filename = "ui_factory"
+#         self.ui_panels = {}
+#         self.code_string = ""
+#
+#     def generate_code(self):
+#         self.code_string = f"""class {self.classname}:
+#     def __init__(self):
+#         self.ui_classes = {{}}
+#
+#
+#     def get_ui_classes(self):
+#         return self.ui_classes
+#
+#     def create_target_ui_constructors(self):
+#         for {ui_file} in {self.ui_files}:
+#             self.ui_panels[{ui_file.classname}] = ui_file.classname()
+#         """

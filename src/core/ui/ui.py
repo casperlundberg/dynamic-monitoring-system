@@ -17,6 +17,8 @@ class RootApp(tk.Tk):
         self.current_panel = None
 
         self.updateAction = UpdateAction()
+
+        # Default IDL path
         self.idl_path = "C:/Users/Desktop-Lumpa/Downloads/openapi.json"
 
         # Should get the panel classes from the generator or update action
@@ -24,6 +26,19 @@ class RootApp(tk.Tk):
         # There is a possibility that the panel classes are not known
         # at the time of instantiation and should be set later by the update action
         self.panel_classes = {}
+
+        self.get_idl_input()  # textbox for the user to input the IDL file path
+        self.generate_all_code()  # button to update the interfaces
+        self.create_dropdown()  # dropdown to select the panel
+
+        self.update_panel_classes()  # get the panel classes from the update action
+        self.create_panels()  # create the panel objects
+
+    def generate_all_code(self):
+        # button to update the interfaces
+        button = tk.Button(self, text="Update",
+                           command=self.updateAction.update)
+        button.pack(pady=20)
 
     def get_idl_input(self):
         # textbox for the user to input the IDL file path
@@ -41,7 +56,10 @@ class RootApp(tk.Tk):
     def update_panel_classes(self):
         panel_classnames_list = self.updateAction.get_panel_classes()
         for panel_classname in panel_classnames_list:
-            self.panel_classes[panel_classname] = panel_classname
+            exec_str = f"panel_classname = {panel_classname}()"
+            _locals = {}
+            exec(exec_str, None, _locals)
+            self.panel_classes[panel_classname] = _locals[panel_classname]
 
     def create_panels(self):
         for panel_name, panel_class in self.panel_classes.items():
