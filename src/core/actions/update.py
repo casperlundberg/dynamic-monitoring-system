@@ -2,6 +2,7 @@ import json
 import os
 import yaml
 import requests
+import jsonref
 from src.core.generators.open_api.generator.generator import Generator
 from src.core.generators.open_api.deployer import Deployer
 from src.core.generators.open_api.OOP_generator.oopgenerator import \
@@ -11,7 +12,10 @@ from src.core.generators.open_api.OOP_generator.oopgenerator import \
 class UpdateAction:
     def __init__(self):
         self.input_path = None
-        self.idl = self.load_idl_document()
+        spec = self.load_idl_document()
+
+        # Dereference the spec
+        self.idl = jsonref.JsonRef.replace_refs(spec)
         self.ui_classnames = []
 
     def set_input_path(self, input_path):
@@ -30,7 +34,7 @@ class UpdateAction:
             raise FileNotFoundError("Invalid file path")
 
         if file_path.endswith(".yaml") or file_path.endswith(".yml"):
-            return yaml.load(open(file_path, 'r'), Loader=yaml.FullLoader)
+            return yaml.safe_load(open(file_path, 'r'))
         elif file_path.endswith(".json"):
             return json.load(open(file_path, 'r'))
         else:
@@ -47,7 +51,7 @@ class UpdateAction:
             raise ValueError("Invalid IDL document")
 
         if url.endswith(".yaml") or url.endswith(".yml"):
-            return yaml.load(content, Loader=yaml.FullLoader)
+            return yaml.safe_load(content)
         elif url.endswith(".json"):
             return json.loads(content)
         else:

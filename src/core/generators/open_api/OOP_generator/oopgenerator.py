@@ -30,8 +30,7 @@ class OOPGenerator:
         for path in paths:
             path_str = str(path)
             path_obj = paths[path]
-            server_url = self.spec.get("servers")[0].get("url")
-            file_gen = UIFileGenerator(path_obj, path_str, server_url)
+            file_gen = UIFileGenerator(path_obj, path_str)
 
             self.ui_files.append(file_gen)
 
