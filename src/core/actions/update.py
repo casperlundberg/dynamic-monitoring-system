@@ -12,22 +12,24 @@ from src.core.generators.open_api.OOP_generator.oopgenerator import \
 class UpdateAction:
     def __init__(self):
         self.input_path = None
-        spec = self.load_idl_document()
-
+        self.input_spec = None
         # Dereference the spec
-        self.idl = jsonref.JsonRef.replace_refs(spec)
-        self.ui_classnames = []
+        self.idl = None
 
     def set_input_path(self, input_path):
         self.input_path = input_path
+
+    def dereference_spec(self):
+        self.idl = jsonref.JsonRef.replace_refs(self.input_spec)
 
     def load_idl_document(self):
         if self.input_path is None:
             raise ValueError("Invalid input path")
         if self.input_path.startswith("http"):
-            return self.load_idl_document_from_url(self.input_path)
+            self.input_spec = self.load_idl_document_from_url(self.input_path)
         else:
-            return self.load_idl_document_from_filepath(self.input_path)
+            self.input_spec = self.load_idl_document_from_filepath(
+                self.input_path)
 
     def load_idl_document_from_filepath(self, file_path):
         if not os.path.isfile(file_path):
@@ -57,38 +59,28 @@ class UpdateAction:
         else:
             raise ValueError("Invalid file type")
 
-    def update(self):
+    def update(self, generator):
         if self.idl is None:
             return
 
         if "openapi" in self.idl:
-            self.handle_openapi()
+            if self.idl["openapi"].startswith("3.0"):
+                self.handle_openapi(generator)
+            else:
+                print("Only OpenAPI 3.0.x is supported")
         elif "asyncapi" in self.idl:
-            self.handle_asyncapi()
+            self.handle_asyncapi(generator)
 
-    def handle_openapi(self):
-        oop_generator = OOPGenerator(self.idl)
-        oop_generator.generate_client_file_obj()
-        oop_generator.generate_client_code()
+    def handle_openapi(self, generator):
+        generator.generate_client_file_obj()
+        generator.generate_client_code()
 
-        oop_generator.generate_ui_file_obj()
-        oop_generator.generate_ui_code()
-
-        for ui_file in oop_generator.ui_files:
-            self.ui_classnames.append(ui_file.classname)
-
-        deployer = Deployer(oop_generator)
+        deployer = Deployer(generator)
         deployer.deploy_clients()
-        deployer.deploy_uis()
 
-    def handle_asyncapi(self):
+    def handle_asyncapi(self, generator):
         print("AsyncAPI")
         # TODO: call the asyncapi code generator
 
     def get_panel_classes(self):
         return self.panel_classes
-
-# Example usage
-# if __name__ == "__main__":
-#     action = UpdateAction("C:/Users/Desktop-Lumpa/Downloads/openapi.json")
-#     action.update()
