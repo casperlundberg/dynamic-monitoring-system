@@ -1,3 +1,6 @@
+from typing import Dict, Any, List
+
+
 def parse_server_variables(servers_obj):
     server_variables = []
     for server in servers_obj:

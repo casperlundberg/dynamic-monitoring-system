@@ -1,18 +1,30 @@
-from typing import List
-from pydantic import BaseModel
-
-from msys.core.generators.open_api.models.misc import Tag
+from dataclasses import dataclass
+from typing import *
 
 
+@dataclass
 class Category:
     id: int
     name: str
 
 
-class Pet(BaseModel):
+@dataclass
+class Pet:
     id: int
     category: Category
     name: str
     photo_urls: List[str]
-    tags: List[Tag]
     status: str
+
+
+@dataclass
+class Items:
+    type: str
+    enum: List[str]
+
+
+@dataclass
+class Hourly:
+    name: str
+    in_: str
+    schema: Items
