@@ -21,10 +21,9 @@ class OOPGenerator:
 
         for path in paths:
             path_obj = paths[path]
-            parameters_obj = path_obj.get("parameters")
-            self.generate_http_obj(path, path_obj, server_url, parameters_obj)
+            self.generate_http_obj(path, path_obj, server_url)
 
-    def generate_http_obj(self, path, path_obj, server_url, parameters_obj):
+    def generate_http_obj(self, path, path_obj, server_url):
 
         # Path Server obj overrides the global server URL
         if path_obj.get("servers") is not None:
@@ -38,6 +37,8 @@ class OOPGenerator:
             path_params = {part.split("}")[0]: 0 for part in
                            path_str.split("{")[1:]}
             url = server_url + path_str
+            parameters_obj = path_obj.get("get").get("parameters")
+            
             http_obj = HTTPModel(SERVER=server_url, PATH=path_str,
                                  path_params=path_params,
                                  request_args={}, url=url,
@@ -45,4 +46,4 @@ class OOPGenerator:
 
             filename = http_obj.PATH.replace("/", "_")[1:]
             self.http_data_objs[filename] = http_obj
-            save_client_file_obj(http_obj, filename)
+            # save_client_file_obj(http_obj, filename)

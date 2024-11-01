@@ -69,3 +69,19 @@ def load_client_file_obj(filename, deploy_path=None):
                              f"{filename}.pkl")
     with open(file_path, "rb") as f:
         return pickle.load(f)
+
+
+def nested_dict_keys_to_list(d):
+    for k, v in d.items():
+        if isinstance(v, dict):
+            yield from nested_dict_keys_to_list(v)
+        else:
+            yield k
+
+
+def nested_dict_get_value(d, key):
+    for k, v in d.items():
+        if k == key:
+            return v
+        if isinstance(v, dict):
+            return nested_dict_get_value(v, key)

@@ -20,26 +20,29 @@ class RequestHelper:
         self.request_args['params'] = params
 
     def set_header_params(self, params):
-        self.request_args['headers'] = params
+        if params:
+            self.request_args['headers'] = params
 
     def set_cookie_params(self, params):
-        self.request_args['cookies'] = params
+        if params:
+            self.request_args['cookies'] = params
+
+    def set_request_args(self, params):
+        self.request_args = params
 
     def make_request(self):
         self.url = self.replace_placeholders(self.url)
 
         if self.request_args:
-            self.response = requests.get(self.url,
-                                         **self.request_args)
+            self.response = requests.get(self.url, **self.request_args)
         else:
             self.response = requests.get(self.url)
 
         self.metrics = {
             "response_time": self.response.elapsed.total_seconds(),
             "status_code": self.response.status_code,
-            "content_type": self.response.headers["Content-Type"],
-            "content_length": self.response.headers[
-                "Content-Length"],
+            "content_type": self.response.headers.get("Content-Type", ""),
+            "content_length": self.response.headers.get("Content-Length", ""),
         }
 
     def replace_placeholders(self, url: str) -> str:
