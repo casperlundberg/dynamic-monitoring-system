@@ -136,4 +136,4 @@ GitHub.sublime-settings
 !.vscode/launch.json
 !.vscode/extensions.json
 .history
-/src/generated_code/
+/msys/generated_code/
