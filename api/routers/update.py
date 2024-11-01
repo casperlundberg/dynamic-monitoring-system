@@ -2,7 +2,7 @@ import jsonref
 from fastapi import APIRouter
 from msys.core.generators.open_api.OOP_generator.oopgenerator import \
     OOPGenerator
-from msys.core.generators.open_api.deployer import Deployer
+# from msys.core.generators.open_api.deployer import Deployer
 from shared_data import shared_queue, update_event
 
 router = APIRouter()
@@ -19,10 +19,10 @@ async def put_update(spec: dict):
         if deref_spec["openapi"].startswith("3.0"):
             generator = OOPGenerator(deref_spec)
             generator.generate_client_file_obj()
-            generator.generate_client_code()
+            # generator.generate_client_code()
 
-            deployer = Deployer(generator)
-            deployer.deploy_clients()
+            # deployer = Deployer(generator)
+            # deployer.deploy_clients()
             shared_queue.put(
                 generator)  # Put the generator object into the queue
             update_event.set()  # Set the event to notify the UI thread

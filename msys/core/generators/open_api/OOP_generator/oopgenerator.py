@@ -1,46 +1,12 @@
-from typing import Dict, Any, List
-
-
-def parse_server_variables(servers_obj):
-    server_variables = []
-    for server in servers_obj:
-        var = server.get("variables")
-        if var is not None:
-            server_variables.append(var)
-    return server_variables
-
-
-def replace_server_variables(server_url, server_variables):
-    for variable in server_variables:
-        server_url = server_url.replace(f"{{{variable}}}",
-                                        server_variables[variable])
-    return server_url
-
-
-def parse_server_urls(servers_obj):
-    server_urls = []
-    server_variables = parse_server_variables(servers_obj)
-    for server in servers_obj:
-        url = server.get("url")
-
-        if not url.startswith("http"):
-            raise ValueError(
-                "Invalid URL, must be full URL. Current URL: " + url)
-
-        if len(server_variables) > 0:
-            parsed_url = replace_server_variables(url, server_variables)
-        else:
-            parsed_url = url
-
-        server_urls.append(parsed_url)
-    return server_urls
+from msys.core.generators.open_api.models.http_model import HTTPModel
+from utils import parse_server_urls, save_client_file_obj
 
 
 class OOPGenerator:
     def __init__(self, spec: dict):
         self.spec = spec
-        self.client_files = []
-        self.model_files = []
+        self.http_data_objs = {}
+        self.param_spec = {}
 
     def generate_client_file_obj(self):
         paths = self.spec.get("paths")
@@ -54,88 +20,29 @@ class OOPGenerator:
             server_url = parse_server_urls(server_obj)[0]
 
         for path in paths:
-            path_str = str(path)
             path_obj = paths[path]
+            parameters_obj = path_obj.get("parameters")
+            self.generate_http_obj(path, path_obj, server_url, parameters_obj)
 
-            # Path Server obj overrides the global server URL
-            if path_obj.get("servers") is not None:
-                server_obj = path_obj.get("servers")
-                server_url = parse_server_urls(server_obj)[0]
+    def generate_http_obj(self, path, path_obj, server_url, parameters_obj):
 
-            if path_obj.get("get") is not None:
-                file_gen = ClientFileGenerator(path_obj, path_str, server_url)
-                self.client_files.append(file_gen)
+        # Path Server obj overrides the global server URL
+        if path_obj.get("servers") is not None:
+            server_obj = path_obj.get("servers")
+            server_url = parse_server_urls(server_obj)[0]
 
-    def generate_client_code(self):
-        for file in self.client_files:
-            file.generate_client_code()
+        if path_obj.get("get") is not None:
+            path_str = str(path)
+            # path params should be fetched from the parameters obj
+            # along with query, header, cookie params
+            path_params = {part.split("}")[0]: 0 for part in
+                           path_str.split("{")[1:]}
+            url = server_url + path_str
+            http_obj = HTTPModel(SERVER=server_url, PATH=path_str,
+                                 path_params=path_params,
+                                 request_args={}, url=url,
+                                 parameters_spec=parameters_obj)
 
-    def get_client_classnames(self):
-        return [file.classname for file in self.client_files]
-
-
-class ClientFileGenerator:
-    def __init__(self, path: dict, path_str, server_url: str):
-        self.path = path
-        self.path_str = path_str
-
-        self.server_url = server_url
-        self.imports = None
-        self.url = server_url + path_str
-
-        self.path_params = None
-
-        self.should_generate = False
-        self.http_method = None
-
-        self.filename = None
-
-        # Classname for the dataclass should be created from schema name
-        # Nor from the filename since schemas can be reused and tracked better
-        self.classname = None
-
-        self.code_string = ""
-
-        self.parse_path_params()
-        self.parse_filename()
-        self.parse_classname()
-
-    def parse_path_params(self):
-        # get the path parameters inside {}
-        self.path_params = {part.split("}")[0]: 0 for part in
-                            self.path_str.split("{")[1:]}
-
-    def parse_filename(self):
-        filename = self.path_str.replace("/", "_")
-        self.filename = filename.replace("{", "").replace("}", "")[1:]
-
-    def parse_classname(self):
-        # classname = self.filename[0].upper() + self.filename[1:]
-        classname = self.filename
-        classname = classname[0].upper() + classname[1:]
-
-        # Upper case the first letter after each underscore
-        for i in range(len(classname)):
-            if classname[i] == "_":
-                classname = (classname[:i + 1]
-                             + classname[i + 1].upper()
-                             + classname[i + 2:])
-
-        classname = classname.replace("_", "")
-        self.classname = classname
-
-    def generate_client_code(self):
-        self_server_var_name = "self.SERVER"
-        self_path_var_name = "self.PATH"
-
-        self.code_string = f"""class {self.classname}:
-    def __init__(self):
-        {self_server_var_name} = "{self.server_url}"
-        {self_path_var_name} = "{self.path_str}"
-        self.path_params = {self.path_params}
-        self.request_args = {{}}
-        
-        self.url = {self_server_var_name} + {self_path_var_name}
-        self.response = None
-        self.metrics = {{}}
-        """
+            filename = http_obj.PATH.replace("/", "_")[1:]
+            self.http_data_objs[filename] = http_obj
+            save_client_file_obj(http_obj, filename)

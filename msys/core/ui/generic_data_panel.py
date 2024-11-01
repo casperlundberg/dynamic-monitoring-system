@@ -40,11 +40,13 @@ def nested_dict_get_value(d, key):
 
 
 class GenericDataPanel(tk.Frame):
-    def __init__(self, master=None, panel_name=None):
+    def __init__(self, master, panel_name, http_obj):
         super().__init__(master)
 
         self.name = panel_name
-        self.request_helper = None
+
+        self.http_obj = http_obj
+        self.request_helper = RequestHelper(http_obj)
         self.body = None
 
         label = tk.Label(self, text=f"This is {self.name}")
@@ -53,21 +55,21 @@ class GenericDataPanel(tk.Frame):
         self.dropdown_x = None
         self.dropdown_y = None
 
-    def construct_client(self):
-        """
-        Construct the client object from the generated code
-        """
-        import_modules()
-
-        locals_dict = {}
-        code = (
-            f"dataclass = {self.name}()"
-        )
-
-        exec(code, globals(), locals_dict)
-
-        dataclass = locals_dict["dataclass"]
-        self.request_helper = RequestHelper(dataclass)
+    # def construct_client(self):
+    #     """
+    #     Construct the client object from the generated code
+    #     """
+    #     import_modules()
+    #
+    #     locals_dict = {}
+    #     code = (
+    #         f"dataclass = {self.name}()"
+    #     )
+    #
+    #     exec(code, globals(), locals_dict)
+    #
+    #     dataclass = locals_dict["dataclass"]
+    #     self.request_helper = RequestHelper(dataclass)
 
     def get_data(self):
         """
@@ -85,7 +87,6 @@ class GenericDataPanel(tk.Frame):
         """
         Create the dropdowns for the panel
         """
-        print("body: ", self.body)
         options_x_axis = list(nested_dict_keys_to_list(self.body))
         options_y_axis = list(nested_dict_keys_to_list(self.body))
 

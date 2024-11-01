@@ -20,6 +20,8 @@ class RootApp(tk.Tk):
         self.panel_dropdown.bind("<<ComboboxSelected>>",
                                  self.on_panel_selected)
 
+        self.generator = None
+
         self.check_for_updates()
 
     def check_for_updates(self):
@@ -33,9 +35,9 @@ class RootApp(tk.Tk):
 
     def update_panels(self, generator):
         # Update the UI with the new generator object
-        for panel_name in generator.get_client_classnames():
-            panel = GenericDataPanel(self, panel_name)
-            self.panels[panel_name] = panel
+        for k, v in generator.http_data_objs.items():
+            self.panels[k] = GenericDataPanel(self, k, v)
+        self.generator = generator
         self.update_dropdown()
 
     def update_dropdown(self):
@@ -51,6 +53,7 @@ class RootApp(tk.Tk):
         self.current_panel = self.panels[panel_name]
         self.current_panel.pack(fill="both", expand=True)
 
-        self.current_panel.construct_client()
+        # get params before getting data
+
         self.current_panel.get_data()
         self.current_panel.drop_boxes()
