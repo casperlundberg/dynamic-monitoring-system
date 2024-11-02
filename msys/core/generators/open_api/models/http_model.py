@@ -19,3 +19,4 @@ class HTTPModel:
 
     parameters_spec: dict
     response_spec: dict
+    components_spec: dict

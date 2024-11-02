@@ -38,13 +38,15 @@ class OOPGenerator:
             url = server_url + path_str
             parameters_obj = path_obj.get("get").get("parameters")
             response_obj = path_obj.get("get").get("responses")
+            components_obj = self.spec.get("components")
 
             http_obj = HTTPModel(SERVER=server_url, PATH=path_str,
                                  path_params=path_params,
                                  request_args={}, url=url,
                                  parameters_spec=parameters_obj,
                                  response_spec=response_obj,
-                                 response_body={}, metrics={})
+                                 response_body={}, metrics={},
+                                 components_spec=components_obj)
 
             filename = http_obj.PATH.replace("/", "_")[1:]
             self.http_data_objs[filename] = http_obj

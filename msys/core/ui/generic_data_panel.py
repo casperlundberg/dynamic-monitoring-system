@@ -1,7 +1,9 @@
+from datetime import datetime
 import tkinter as tk
 from tkinter import ttk
 
 import requests
+from matplotlib import pyplot as plt
 
 from msys.core.generators.open_api.OOP_generator.oop_request_helper import \
     RequestHelper
@@ -171,23 +173,34 @@ class GenericDataPanel(tk.Frame):
             except requests.exceptions.JSONDecodeError:
                 self.body = self.request_helper.response.text
 
-        print("request_args", self.request_helper.request_args)
-        print("Body", self.body)
-
-    def extract_fields(self, schema, parent_key=''):
+    def extract_fields(self, schema, components, parent_key=''):
         """
-        Recursively extract fields from the schema
+        Recursively extract fields from the schema and components
         """
         fields = []
         if 'properties' in schema:
             for key, value in schema['properties'].items():
                 full_key = f"{parent_key}.{key}" if parent_key else key
                 fields.append(full_key)
-                if value.get('type') == 'object':
-                    fields.extend(self.extract_fields(value, full_key))
-                elif value.get('type') == 'array' and 'items' in value:
+                if 'type' in value and value['type'] in components['schemas']:
+                    ref_schema = components['schemas'][value['type']]
                     fields.extend(
-                        self.extract_fields(value['items'], full_key))
+                        self.extract_fields(ref_schema, components, full_key))
+                elif value.get('type') == 'array' and 'items' in value:
+                    if 'type' in value['items'] and value['items']['type'] in \
+                            components['schemas']:
+                        ref_schema = components['schemas'][
+                            value['items']['type']]
+                        fields.extend(
+                            self.extract_fields(ref_schema, components,
+                                                full_key))
+                    else:
+                        fields.extend(
+                            self.extract_fields(value['items'], components,
+                                                full_key))
+                else:
+                    fields.extend(
+                        self.extract_fields(value, components, full_key))
         return fields
 
     def update_dropdowns(self):
@@ -195,12 +208,9 @@ class GenericDataPanel(tk.Frame):
         Update the X-axis and Y-axis dropdowns with suitable fields from the OpenAPI schema
         """
         responses = self.http_obj.response_spec
-        print(f"Responses: {responses}")  # Debug print to check responses
 
         if '200' in responses:
             content = responses['200'].get('content', {})
-            print(
-                f"Response content: {content}")  # Debug print to check response content
 
             if 'application/json' in content:
                 schema = content['application/json'].get('schema', {})
@@ -209,11 +219,8 @@ class GenericDataPanel(tk.Frame):
             else:
                 schema = {}
 
-            print(f"Schema: {schema}")  # Debug print to check schema
-
-            fields = self.extract_fields(schema)
-            print(
-                f"Fields for dropdowns: {fields}")  # Debug print to check fields
+            components = self.http_obj.components_spec
+            fields = self.extract_fields(schema, components)
             self.x_axis_dropdown['values'] = fields
             self.y_axis_dropdown['values'] = fields
         else:
@@ -230,11 +237,29 @@ class GenericDataPanel(tk.Frame):
             print("Please select both X-axis and Y-axis fields.")
             return
 
-        x_data = [item[x_field] for item in self.body]
-        y_data = [item[y_field] for item in self.body]
+        x_data = find_value_by_key(self.body, x_field)
+        y_data = find_value_by_key(self.body, y_field)
 
-        # Here you can use a library like matplotlib to generate the graph
-        import matplotlib.pyplot as plt
+        if x_data is None or y_data is None:
+            print(f"Could not find data for fields: {x_field}, {y_field}")
+            return
+
+        # Check if x_data or y_data are strings representing time and convert them
+        try:
+            x_data = [
+                datetime.fromisoformat(item) if isinstance(item, str) else item
+                for item in x_data]
+        except ValueError:
+            print(f"Error converting x_data to datetime: {x_data}")
+            return
+
+        try:
+            y_data = [
+                datetime.fromisoformat(item) if isinstance(item, str) else item
+                for item in y_data]
+        except ValueError:
+            print(f"Error converting y_data to datetime: {y_data}")
+            return
 
         plt.figure(figsize=(10, 6))
         plt.plot(x_data, y_data, marker='o')
@@ -242,3 +267,22 @@ class GenericDataPanel(tk.Frame):
         plt.ylabel(y_field)
         plt.title(f"{x_field} vs {y_field}")
         plt.show()
+
+
+def find_value_by_key(data, key):
+    """
+    Recursively search through the response body to find the value for the given key
+    """
+    if isinstance(data, dict):
+        if key in data:
+            return data[key]
+        for k, v in data.items():
+            result = find_value_by_key(v, key)
+            if result is not None:
+                return result
+    elif isinstance(data, list):
+        for item in data:
+            result = find_value_by_key(item, key)
+            if result is not None:
+                return result
+    return None
