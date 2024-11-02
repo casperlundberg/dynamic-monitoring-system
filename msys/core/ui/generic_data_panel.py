@@ -4,6 +4,7 @@ from tkinter import ttk
 
 import requests
 from matplotlib import pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from msys.core.generators.open_api.OOP_generator.oop_request_helper import \
     RequestHelper
@@ -18,21 +19,79 @@ class GenericDataPanel(tk.Frame):
         self.request_helper = RequestHelper(http_obj)
         self.body = None
 
-        label = tk.Label(self, text=f"This is {self.name}")
-        label.grid(row=0, column=0, columnspan=2, pady=20)
+        # Create frames for layout
+        self.params_frame = tk.Frame(self)
+        self.params_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nw")
 
+        self.canvas_frame = tk.Frame(self, width=1000, height=600)
+        self.canvas_frame.grid(row=0, column=1, rowspan=2, padx=10, pady=10,
+                               sticky="nsew")
+        self.canvas_frame.grid_propagate(False)
+
+        self.canvas = None
+
+        # Create a canvas with scrollbars for the parameters
+        self.scroll_canvas = tk.Canvas(self.params_frame, width=400,
+                                       height=400)
+        self.scroll_canvas.grid(row=0, column=0, sticky="nsew")
+
+        self.scrollbar_y = tk.Scrollbar(self.params_frame, orient="vertical",
+                                        command=self.scroll_canvas.yview)
+        self.scrollbar_y.grid(row=0, column=1, sticky="ns")
+
+        self.scrollbar_x = tk.Scrollbar(self.params_frame, orient="horizontal",
+                                        command=self.scroll_canvas.xview)
+        self.scrollbar_x.grid(row=1, column=0, sticky="ew")
+
+        self.scroll_canvas.configure(yscrollcommand=self.scrollbar_y.set,
+                                     xscrollcommand=self.scrollbar_x.set)
+
+        self.inner_frame = tk.Frame(self.scroll_canvas)
+        self.scroll_canvas.create_window((0, 0), window=self.inner_frame,
+                                         anchor="nw")
+
+        self.inner_frame.bind("<Configure>",
+                              lambda e: self.scroll_canvas.configure(
+                                  scrollregion=self.scroll_canvas.bbox("all")))
+
+        # Create a frame for the axis dropdowns and graph button
+        self.axis_controls_frame = tk.Frame(self.params_frame)
+        self.axis_controls_frame.grid(row=2, column=0, columnspan=2, padx=10,
+                                      pady=10, sticky="nsew")
+
+        # Add widgets to axis_controls_frame
         self.x_axis_var = tk.StringVar()
         self.y_axis_var = tk.StringVar()
 
-        self.x_axis_dropdown = ttk.Combobox(self, textvariable=self.x_axis_var)
-        self.x_axis_dropdown.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        tk.Label(self.axis_controls_frame, text="X-axis:").grid(row=0,
+                                                                column=0,
+                                                                padx=10,
+                                                                pady=5,
+                                                                sticky="e")
+        self.x_axis_dropdown = ttk.Combobox(self.axis_controls_frame,
+                                            textvariable=self.x_axis_var,
+                                            width=40)
+        self.x_axis_dropdown.grid(row=0, column=1, padx=10, pady=5, sticky="w")
 
-        self.y_axis_dropdown = ttk.Combobox(self, textvariable=self.y_axis_var)
+        tk.Label(self.axis_controls_frame, text="Y-axis:").grid(row=1,
+                                                                column=0,
+                                                                padx=10,
+                                                                pady=5,
+                                                                sticky="e")
+        self.y_axis_dropdown = ttk.Combobox(self.axis_controls_frame,
+                                            textvariable=self.y_axis_var,
+                                            width=40)
         self.y_axis_dropdown.grid(row=1, column=1, padx=10, pady=5, sticky="w")
 
-        self.graph_button = tk.Button(self, text="Generate Graph",
+        self.graph_button = tk.Button(self.axis_controls_frame,
+                                      text="Generate Graph",
                                       command=self.generate_graph)
         self.graph_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
 
     def set_params_from_ui(self):
         """
@@ -43,26 +102,25 @@ class GenericDataPanel(tk.Frame):
 
         for idx, param in enumerate(params_spec):
             param_name = param.get("name")
-            param_label = tk.Label(self, text=param_name)
-            param_label.grid(row=idx + 3, column=0, padx=10, pady=5,
-                             sticky="e")
+            param_label = tk.Label(self.inner_frame, text=param_name)
+            param_label.grid(row=idx, column=0, padx=10, pady=5, sticky="e")
 
             enum_values = self.find_enum_values(param.get("schema", {}))
             if enum_values:
                 # Create a dropdown for enum values
                 selected_option = tk.StringVar()
-                dropdown = ttk.Combobox(self, textvariable=selected_option,
-                                        values=enum_values)
-                dropdown.grid(row=idx + 3, column=1, padx=10, pady=5,
-                              sticky="w")
+                dropdown = ttk.Combobox(self.inner_frame,
+                                        textvariable=selected_option,
+                                        values=enum_values,
+                                        width=40)
+                dropdown.grid(row=idx, column=1, padx=10, pady=5, sticky="w")
                 self.text_boxes[param_name] = dropdown
                 dropdown.bind("<<ComboboxSelected>>",
                               self.update_http_obj_from_ui)
             else:
                 # Create a text box for other parameters
-                text_box = tk.Entry(self)
-                text_box.grid(row=idx + 3, column=1, padx=10, pady=5,
-                              sticky="w")
+                text_box = tk.Entry(self.inner_frame, width=40)
+                text_box.grid(row=idx, column=1, padx=10, pady=5, sticky="w")
                 self.text_boxes[param_name] = text_box
                 text_box.bind("<KeyRelease>", self.update_http_obj_from_ui)
 
@@ -163,7 +221,6 @@ class GenericDataPanel(tk.Frame):
             self.http_obj.request_args['headers'] = header_params
         if cookie_params:
             self.request_helper.set_cookie_params(cookie_params)
-            self.http_obj.request_args['cookies'] = cookie_params
 
         self.request_helper.make_request()
 
@@ -230,6 +287,9 @@ class GenericDataPanel(tk.Frame):
         """
         Generate a graph based on the selected X-axis and Y-axis data
         """
+        if not self.body:
+            self.get_data()
+
         x_field = self.x_axis_var.get()
         y_field = self.y_axis_var.get()
 
@@ -242,7 +302,11 @@ class GenericDataPanel(tk.Frame):
 
         if x_data is None or y_data is None:
             print(f"Could not find data for fields: {x_field}, {y_field}")
-            return
+            print("Re-fetching data...")
+            self.get_data()
+
+            x_data = find_value_by_key(self.body, x_field)
+            y_data = find_value_by_key(self.body, y_field)
 
         # Check if x_data or y_data are strings representing time and convert them
         try:
@@ -261,28 +325,30 @@ class GenericDataPanel(tk.Frame):
             print(f"Error converting y_data to datetime: {y_data}")
             return
 
-        plt.figure(figsize=(10, 6))
-        plt.plot(x_data, y_data, marker='o')
-        plt.xlabel(x_field)
-        plt.ylabel(y_field)
-        plt.title(f"{x_field} vs {y_field}")
-        plt.show()
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(x_data, y_data, marker='o')
+        ax.set_xlabel(x_field)
+        ax.set_ylabel(y_field)
+        ax.set_title(f"{x_field} vs {y_field}")
+
+        # Embed the plot in the tkinter frame
+        if self.canvas:
+            self.canvas.get_tk_widget().destroy()
+        self.canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
 
 def find_value_by_key(data, key):
     """
     Recursively search through the response body to find the value for the given key
     """
-    if isinstance(data, dict):
-        if key in data:
-            return data[key]
-        for k, v in data.items():
-            result = find_value_by_key(v, key)
-            if result is not None:
-                return result
-    elif isinstance(data, list):
-        for item in data:
-            result = find_value_by_key(item, key)
-            if result is not None:
-                return result
-    return None
+    keys = key.split('.')
+    for k in keys:
+        if isinstance(data, dict):
+            data = data.get(k)
+        elif isinstance(data, list):
+            data = [item.get(k) for item in data if isinstance(item, dict)]
+        else:
+            return None
+    return data

@@ -11,7 +11,8 @@ class RootApp(tk.Tk):
         super().__init__()
         self.panel_var = tk.StringVar()
         self.title("Root Application")
-        self.geometry("960x800")
+        self.geometry("1920x1080+0+0")
+        self.state("zoomed")
 
         self.panels = {}
         self.save_file_name = "panel_obj_list"
@@ -37,6 +38,11 @@ class RootApp(tk.Tk):
                                  self.on_panel_selected)
 
         self.check_for_updates()
+
+        self.grid_rowconfigure(2, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
 
     def check_for_updates(self):
         if update_event.is_set():
