@@ -6,7 +6,6 @@ class OOPGenerator:
     def __init__(self, spec: dict):
         self.spec = spec
         self.http_data_objs = {}
-        self.param_spec = {}
 
     def generate_client_file_obj(self):
         paths = self.spec.get("paths")
@@ -38,11 +37,14 @@ class OOPGenerator:
                            path_str.split("{")[1:]}
             url = server_url + path_str
             parameters_obj = path_obj.get("get").get("parameters")
-            
+            response_obj = path_obj.get("get").get("responses")
+
             http_obj = HTTPModel(SERVER=server_url, PATH=path_str,
                                  path_params=path_params,
                                  request_args={}, url=url,
-                                 parameters_spec=parameters_obj)
+                                 parameters_spec=parameters_obj,
+                                 response_spec=response_obj,
+                                 response_body={}, metrics={})
 
             filename = http_obj.PATH.replace("/", "_")[1:]
             self.http_data_objs[filename] = http_obj

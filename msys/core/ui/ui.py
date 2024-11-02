@@ -36,8 +36,6 @@ class RootApp(tk.Tk):
         self.panel_dropdown.bind("<<ComboboxSelected>>",
                                  self.on_panel_selected)
 
-        self.http_data_objs = {}
-
         self.check_for_updates()
 
     def check_for_updates(self):
@@ -51,7 +49,6 @@ class RootApp(tk.Tk):
 
     def update_panels(self, generator):
         # Update the UI with the new generator object
-        self.http_data_objs = generator.http_data_objs
         for k, v in generator.http_data_objs.items():
             self.panels[k] = GenericDataPanel(self, k, v)
         self.update_dropdown()
@@ -80,20 +77,25 @@ class RootApp(tk.Tk):
         # get data from the client
         self.current_panel.get_data()
 
-        # update the panel object in the panels dict
-        self.http_data_objs[
-            self.current_panel.name] = self.current_panel.http_obj
-
     def save_data(self):
         # Update the http_obj with the current values from the UI elements
         for panel in self.panels.values():
             panel.update_http_obj_from_ui()
 
-        # save http_data_objs inside the panels
-        save_client_file_obj(self.http_data_objs, self.save_file_name)
+        # Update http_data_objs with the new http_objs from each panel
+        http_data_objs = {k: panel.http_obj for k, panel in
+                          self.panels.items()}
+
+        # Save http_data_objs to the file
+        save_client_file_obj(http_data_objs, self.save_file_name)
+        print(f"Data saved to {self.save_file_name}: {http_data_objs}")
 
     def load_data(self):
-        self.http_data_objs = load_client_file_obj(self.save_file_name)
-        for k, v in self.http_data_objs.items():
+        http_data_objs = load_client_file_obj(self.save_file_name)
+        for k, v in http_data_objs.items():
             self.panels[k] = GenericDataPanel(self, k, v)
+            self.panels[
+                k].populate_ui_from_http_obj()  # Populate UI with loaded data
+            self.panels[
+                k].update_dropdowns()  # Update dropdowns with loaded data
         self.update_dropdown()

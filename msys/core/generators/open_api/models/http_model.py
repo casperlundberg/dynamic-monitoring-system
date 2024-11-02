@@ -14,4 +14,8 @@ class HTTPModel:
     path_params: dict
     request_args: dict
     url: str
+    response_body: dict
+    metrics: dict
+
     parameters_spec: dict
+    response_spec: dict

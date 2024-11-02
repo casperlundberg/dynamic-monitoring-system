@@ -10,7 +10,7 @@ from msys.core.generators.open_api.OOP_generator.oop_request_helper import \
 class GenericDataPanel(tk.Frame):
     def __init__(self, master, panel_name, http_obj):
         super().__init__(master)
-        self.text_boxes = None
+        self.text_boxes = {}  # Initialize self.text_boxes as an empty dictionary
         self.name = panel_name
         self.http_obj = http_obj
         self.request_helper = RequestHelper(http_obj)
@@ -19,20 +19,30 @@ class GenericDataPanel(tk.Frame):
         label = tk.Label(self, text=f"This is {self.name}")
         label.grid(row=0, column=0, columnspan=2, pady=20)
 
-        self.dropdown_x = None
-        self.dropdown_y = None
+        self.x_axis_var = tk.StringVar()
+        self.y_axis_var = tk.StringVar()
+
+        self.x_axis_dropdown = ttk.Combobox(self, textvariable=self.x_axis_var)
+        self.x_axis_dropdown.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+
+        self.y_axis_dropdown = ttk.Combobox(self, textvariable=self.y_axis_var)
+        self.y_axis_dropdown.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+
+        self.graph_button = tk.Button(self, text="Generate Graph",
+                                      command=self.generate_graph)
+        self.graph_button.grid(row=2, column=0, columnspan=2, pady=10)
 
     def set_params_from_ui(self):
         """
         Set the path params from the UI
         """
         params_spec = self.http_obj.parameters_spec
-        self.text_boxes = {}
+        self.text_boxes = {}  # Ensure self.text_boxes is initialized
 
         for idx, param in enumerate(params_spec):
             param_name = param.get("name")
             param_label = tk.Label(self, text=param_name)
-            param_label.grid(row=idx + 1, column=0, padx=10, pady=5,
+            param_label.grid(row=idx + 3, column=0, padx=10, pady=5,
                              sticky="e")
 
             enum_values = self.find_enum_values(param.get("schema", {}))
@@ -41,17 +51,21 @@ class GenericDataPanel(tk.Frame):
                 selected_option = tk.StringVar()
                 dropdown = ttk.Combobox(self, textvariable=selected_option,
                                         values=enum_values)
-                dropdown.grid(row=idx + 1, column=1, padx=10, pady=5,
+                dropdown.grid(row=idx + 3, column=1, padx=10, pady=5,
                               sticky="w")
                 self.text_boxes[param_name] = dropdown
+                dropdown.bind("<<ComboboxSelected>>",
+                              self.update_http_obj_from_ui)
             else:
                 # Create a text box for other parameters
                 text_box = tk.Entry(self)
-                text_box.grid(row=idx + 1, column=1, padx=10, pady=5,
+                text_box.grid(row=idx + 3, column=1, padx=10, pady=5,
                               sticky="w")
                 self.text_boxes[param_name] = text_box
+                text_box.bind("<KeyRelease>", self.update_http_obj_from_ui)
 
         self.populate_ui_from_http_obj()
+        self.update_dropdowns()  # Update dropdowns immediately
 
     def populate_ui_from_http_obj(self):
         """
@@ -76,7 +90,7 @@ class GenericDataPanel(tk.Frame):
                     widget.delete(0, tk.END)
                     widget.insert(0, value)
 
-    def update_http_obj_from_ui(self):
+    def update_http_obj_from_ui(self, event=None):
         """
         Update the http_obj with values from the UI elements
         """
@@ -120,9 +134,6 @@ class GenericDataPanel(tk.Frame):
             param_name = param.get("name")
             param_value = self.text_boxes[param_name].get()
 
-            # Debug print to check the param_value
-            print(f"Param Name: {param_name}, Param Value: {param_value}")
-
             if param_value:  # Only add the parameter if it has a value
                 if param.get("in") == "path":
                     path_params[param_name] = param_value
@@ -152,12 +163,6 @@ class GenericDataPanel(tk.Frame):
             self.request_helper.set_cookie_params(cookie_params)
             self.http_obj.request_args['cookies'] = cookie_params
 
-        # Debug prints to check the parameters set in the request helper
-        print(f"Path Params: {path_params}")
-        print(f"Query Params: {query_params}")
-        print(f"Header Params: {header_params}")
-        print(f"Cookie Params: {cookie_params}")
-
         self.request_helper.make_request()
 
         if self.request_helper.response.status_code == 200:
@@ -166,7 +171,74 @@ class GenericDataPanel(tk.Frame):
             except requests.exceptions.JSONDecodeError:
                 self.body = self.request_helper.response.text
 
-        print("URL", self.request_helper.url)
         print("request_args", self.request_helper.request_args)
         print("Body", self.body)
-        print("Response", self.request_helper.response)
+
+    def extract_fields(self, schema, parent_key=''):
+        """
+        Recursively extract fields from the schema
+        """
+        fields = []
+        if 'properties' in schema:
+            for key, value in schema['properties'].items():
+                full_key = f"{parent_key}.{key}" if parent_key else key
+                fields.append(full_key)
+                if value.get('type') == 'object':
+                    fields.extend(self.extract_fields(value, full_key))
+                elif value.get('type') == 'array' and 'items' in value:
+                    fields.extend(
+                        self.extract_fields(value['items'], full_key))
+        return fields
+
+    def update_dropdowns(self):
+        """
+        Update the X-axis and Y-axis dropdowns with suitable fields from the OpenAPI schema
+        """
+        responses = self.http_obj.response_spec
+        print(f"Responses: {responses}")  # Debug print to check responses
+
+        if '200' in responses:
+            content = responses['200'].get('content', {})
+            print(
+                f"Response content: {content}")  # Debug print to check response content
+
+            if 'application/json' in content:
+                schema = content['application/json'].get('schema', {})
+            elif 'application/xml' in content:
+                schema = content['application/xml'].get('schema', {})
+            else:
+                schema = {}
+
+            print(f"Schema: {schema}")  # Debug print to check schema
+
+            fields = self.extract_fields(schema)
+            print(
+                f"Fields for dropdowns: {fields}")  # Debug print to check fields
+            self.x_axis_dropdown['values'] = fields
+            self.y_axis_dropdown['values'] = fields
+        else:
+            print("No 200 response found in response_spec")
+
+    def generate_graph(self):
+        """
+        Generate a graph based on the selected X-axis and Y-axis data
+        """
+        x_field = self.x_axis_var.get()
+        y_field = self.y_axis_var.get()
+
+        if not x_field or not y_field:
+            print("Please select both X-axis and Y-axis fields.")
+            return
+
+        x_data = [item[x_field] for item in self.body]
+        y_data = [item[y_field] for item in self.body]
+
+        # Here you can use a library like matplotlib to generate the graph
+        import matplotlib.pyplot as plt
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(x_data, y_data, marker='o')
+        plt.xlabel(x_field)
+        plt.ylabel(y_field)
+        plt.title(f"{x_field} vs {y_field}")
+        plt.show()
