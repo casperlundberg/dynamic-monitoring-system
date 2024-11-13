@@ -15,34 +15,37 @@ class RootApp(tk.Tk):
         self.state("zoomed")
 
         self.panels = {}
-        self.save_file_name = "panel_obj_list"
+        self.panel_templates = {}
+        self.save_file_name = "panel_data_obj_list"
         self.current_panel = None
 
         save_button = tk.Button(self, text="Save session",
                                 command=self.save_data)
-        save_button.grid(row=0, column=0, padx=10, pady=10)
+        save_button.grid(row=0, column=2, padx=10, pady=10)
 
-        load_button = tk.Button(self, text="Load old session",
-                                command=self.load_data)
-        load_button.grid(row=0, column=1, padx=10, pady=10)
+        # load_button = tk.Button(self, text="Load old session",
+        #                         command=self.load_data)
+        # load_button.grid(row=0, column=1, padx=10, pady=10)
 
-        self.get_data_button = tk.Button(self, text="Get Data",
-                                         command=self.get_data)
-        self.get_data_button.grid(row=0, column=2, padx=10, pady=10)
-        self.get_data_button.grid_remove()  # Initially hide the button
+        self.crete_new_panel = tk.Button(self, text="Create panel",
+                                         command=self.create_panel_from_template)
+        self.crete_new_panel.grid(row=0, column=1, padx=10, pady=10)
 
         self.panel_dropdown = ttk.Combobox(self, textvariable=self.panel_var)
-        self.panel_dropdown.grid(row=1, column=0, columnspan=3, padx=10,
+        self.panel_dropdown.grid(row=0, column=0, columnspan=1, padx=10,
                                  pady=10)
         self.panel_dropdown.bind("<<ComboboxSelected>>",
                                  self.on_panel_selected)
-
-        self.check_for_updates()
-
         self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(2, weight=1)
+
+        # Load previous settings on start
+        self.load_data()
+
+        # Start the loop that waits for updates from the generator
+        self.check_for_updates()
 
     def check_for_updates(self):
         if update_event.is_set():
@@ -57,6 +60,7 @@ class RootApp(tk.Tk):
         # Update the UI with the new generator object
         for k, v in generator.http_data_objs.items():
             self.panels[k] = GenericDataPanel(self, k, v)
+            self.panel_templates[k] = v
         self.update_dropdown()
 
     def update_dropdown(self):
@@ -77,11 +81,33 @@ class RootApp(tk.Tk):
         self.current_panel.set_params_from_ui()
 
         # Show the "Get Data" button
-        self.get_data_button.grid()
 
-    def get_data(self):
-        # get data from the client
-        self.current_panel.get_data()
+    def create_panel_from_template(self):
+        # create pop-up window with form to fill in
+        top = tk.Toplevel(self)
+        top.geometry("550x450")
+        top.title("Create new panel")
+        label = tk.Label(top, text="Enter the name of the new panel")
+        label.pack()
+        name_entry = tk.Entry(top)
+        name_entry.pack()
+        drop_down_label = tk.Label(top, text="Select the target endpoint")
+        drop_down_label.pack()
+        drop_down = ttk.Combobox(top)
+        drop_down.pack()
+        drop_down['values'] = list(self.panel_templates.keys())
+
+        button = tk.Button(top, text="Create",
+                           command=lambda: self.template_to_panel(
+                               name_entry.get(),
+                               self.panel_templates[
+                                   drop_down.get()]))
+        button.pack()
+
+    def template_to_panel(self, name, http_obj):
+        # Add a new panel to the list
+        self.panels[name] = GenericDataPanel(self, name, http_obj)
+        self.update_dropdown()
 
     def save_data(self):
         # Update the http_obj with the current values from the UI elements
@@ -96,8 +122,13 @@ class RootApp(tk.Tk):
         save_client_file_obj(http_data_objs, self.save_file_name)
         print(f"Data saved to {self.save_file_name}: {http_data_objs}")
 
+        # Save unique_endpoints to the file
+        save_client_file_obj(self.panel_templates, "unique_endpoints")
+
     def load_data(self):
         http_data_objs = load_client_file_obj(self.save_file_name)
+        if http_data_objs is None:
+            return
         for k, v in http_data_objs.items():
             self.panels[k] = GenericDataPanel(self, k, v)
             self.panels[
@@ -105,3 +136,7 @@ class RootApp(tk.Tk):
             self.panels[
                 k].update_dropdowns()  # Update dropdowns with loaded data
         self.update_dropdown()
+        print(f"Data loaded from {self.save_file_name}")
+
+        # Load unique_endpoints from the file
+        self.panel_templates = load_client_file_obj("unique_endpoints")

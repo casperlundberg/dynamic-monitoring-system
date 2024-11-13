@@ -39,10 +39,10 @@ class RequestHelper:
             self.response = requests.get(self.url)
 
         self.metrics = {
-            "response_time": self.response.elapsed.total_seconds(),
+            "response_time_ms": self.response.elapsed.total_seconds() * 1000,
             "status_code": self.response.status_code,
             "content_type": self.response.headers.get("Content-Type", ""),
-            "content_length": self.response.headers.get("Content-Length", ""),
+            # "content_length": self.response.headers.get("Content-Length", ""),
         }
 
     def replace_placeholders(self, url: str) -> str:

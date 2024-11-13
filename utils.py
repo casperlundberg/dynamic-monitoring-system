@@ -60,15 +60,29 @@ def save_client_file_obj(http_obj, filename, deploy_path=None):
 
 
 def load_client_file_obj(filename, deploy_path=None):
-    # Load the client file data
+    # Check if filename is provided
+    if not filename:
+        raise ValueError("Filename cannot be None or empty")
+
+    # Set deploy_path to generated_folder if not provided
     if deploy_path is None:
         deploy_path = generated_folder()
 
+    # Construct the file path
     file_path = os.path.join(deploy_path, SAVED_OBJECTS_FOLDER,
                              GENERATED_CODE_SAVED_CLIENTS_FOLDER,
                              f"{filename}.pkl")
-    with open(file_path, "rb") as f:
-        return pickle.load(f)
+
+    # Check if the file exists
+    if not os.path.exists(file_path):
+        # raise FileNotFoundError(f"File not found: {file_path}")
+        return None
+    # Load the client file data
+    try:
+        with open(file_path, "rb") as f:
+            return pickle.load(f)
+    except (pickle.PickleError, EOFError) as e:
+        raise RuntimeError(f"Error loading pickle file: {e}")
 
 
 def nested_dict_keys_to_list(d):
@@ -85,3 +99,18 @@ def nested_dict_get_value(d, key):
             return v
         if isinstance(v, dict):
             return nested_dict_get_value(v, key)
+
+
+def find_value_by_key(data, key):
+    """
+    Recursively search through the response body to find the value for the given key
+    """
+    keys = key.split('.')
+    for k in keys:
+        if isinstance(data, dict):
+            data = data.get(k)
+        elif isinstance(data, list):
+            data = [item.get(k) for item in data if isinstance(item, dict)]
+        else:
+            return None
+    return data

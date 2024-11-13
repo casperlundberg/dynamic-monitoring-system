@@ -14,9 +14,16 @@ class HTTPModel:
     path_params: dict
     request_args: dict
     url: str
+
     response_body: dict
     metrics: dict
 
+    x_axis: str  # This is a string that represents the x-axis choice
+    y_axis: str  # This is a string that represents the y-axis choice
+
+    # These are the specs for the parameters, response and components
+    # Should be handled before reaching this class and pass processed data
+    # to be used here, that is a better design.
     parameters_spec: dict
     response_spec: dict
     components_spec: dict

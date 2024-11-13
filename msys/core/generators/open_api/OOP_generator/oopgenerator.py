@@ -46,7 +46,8 @@ class OOPGenerator:
                                  parameters_spec=parameters_obj,
                                  response_spec=response_obj,
                                  response_body={}, metrics={},
-                                 components_spec=components_obj)
+                                 components_spec=components_obj,
+                                 x_axis="", y_axis="")
 
             filename = http_obj.PATH.replace("/", "_")[1:]
             self.http_data_objs[filename] = http_obj

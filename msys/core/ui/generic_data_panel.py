@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 import tkinter as tk
 from tkinter import ttk
@@ -8,6 +9,17 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from msys.core.generators.open_api.OOP_generator.oop_request_helper import \
     RequestHelper
+from utils import find_value_by_key
+
+
+def create_text_with_scrollbar(parent, text_content, expand=True):
+    body_canvas = tk.Text(parent, wrap=tk.WORD)
+    scrollbar = tk.Scrollbar(parent, command=body_canvas.yview)
+    body_canvas.configure(yscrollcommand=scrollbar.set)
+
+    body_canvas.insert(tk.END, text_content)
+    body_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=expand)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
 
 class GenericDataPanel(tk.Frame):
@@ -16,35 +28,26 @@ class GenericDataPanel(tk.Frame):
         self.text_boxes = {}  # Initialize self.text_boxes as an empty dictionary
         self.name = panel_name
         self.http_obj = http_obj
-        self.request_helper = RequestHelper(http_obj)
         self.body = None
 
         # Create frames for layout
-        self.params_frame = tk.Frame(self)
-        self.params_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nw")
+        self.left_frame = tk.Frame(self, width=600, height=1000)
+        self.left_frame.grid(row=0, column=0, padx=10, pady=10,
+                             sticky="nw")
+        self.left_frame.grid_propagate(False)
 
-        self.canvas_frame = tk.Frame(self, width=1000, height=600)
-        self.canvas_frame.grid(row=0, column=1, rowspan=2, padx=10, pady=10,
-                               sticky="nsew")
-        self.canvas_frame.grid_propagate(False)
-
-        self.canvas = None
-
-        # Create a canvas with scrollbars for the parameters
-        self.scroll_canvas = tk.Canvas(self.params_frame, width=400,
+        # Create a canvas with a vertical scrollbar for the parameters
+        # top-left
+        self.scroll_canvas = tk.Canvas(self.left_frame,
                                        height=400)
         self.scroll_canvas.grid(row=0, column=0, sticky="nsew")
 
-        self.scrollbar_y = tk.Scrollbar(self.params_frame, orient="vertical",
+        self.scrollbar_y = tk.Scrollbar(self.left_frame,
+                                        orient="vertical",
                                         command=self.scroll_canvas.yview)
         self.scrollbar_y.grid(row=0, column=1, sticky="ns")
 
-        self.scrollbar_x = tk.Scrollbar(self.params_frame, orient="horizontal",
-                                        command=self.scroll_canvas.xview)
-        self.scrollbar_x.grid(row=1, column=0, sticky="ew")
-
-        self.scroll_canvas.configure(yscrollcommand=self.scrollbar_y.set,
-                                     xscrollcommand=self.scrollbar_x.set)
+        self.scroll_canvas.configure(yscrollcommand=self.scrollbar_y.set)
 
         self.inner_frame = tk.Frame(self.scroll_canvas)
         self.scroll_canvas.create_window((0, 0), window=self.inner_frame,
@@ -52,12 +55,13 @@ class GenericDataPanel(tk.Frame):
 
         self.inner_frame.bind("<Configure>",
                               lambda e: self.scroll_canvas.configure(
-                                  scrollregion=self.scroll_canvas.bbox("all")))
+                                  scrollregion=self.scroll_canvas.bbox(
+                                      "all")))
 
-        # Create a frame for the axis dropdowns and graph button
-        self.axis_controls_frame = tk.Frame(self.params_frame)
-        self.axis_controls_frame.grid(row=2, column=0, columnspan=2, padx=10,
-                                      pady=10, sticky="nsew")
+        # mid-left with the axis dropdowns and create graph button
+        self.axis_controls_frame = tk.Frame(self.left_frame)
+        self.axis_controls_frame.grid(row=1, column=0, columnspan=2,
+                                      padx=10, pady=10, sticky="nsew")
 
         # Add widgets to axis_controls_frame
         self.x_axis_var = tk.StringVar()
@@ -71,7 +75,8 @@ class GenericDataPanel(tk.Frame):
         self.x_axis_dropdown = ttk.Combobox(self.axis_controls_frame,
                                             textvariable=self.x_axis_var,
                                             width=40)
-        self.x_axis_dropdown.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.x_axis_dropdown.grid(row=0, column=1, padx=10, pady=5,
+                                  sticky="w")
 
         tk.Label(self.axis_controls_frame, text="Y-axis:").grid(row=1,
                                                                 column=0,
@@ -81,12 +86,25 @@ class GenericDataPanel(tk.Frame):
         self.y_axis_dropdown = ttk.Combobox(self.axis_controls_frame,
                                             textvariable=self.y_axis_var,
                                             width=40)
-        self.y_axis_dropdown.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+        self.y_axis_dropdown.grid(row=1, column=1, padx=10, pady=5,
+                                  sticky="w")
 
         self.graph_button = tk.Button(self.axis_controls_frame,
                                       text="Generate Graph",
                                       command=self.generate_graph)
         self.graph_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+        # bottom-left with the response metrics
+        self.metrics_frame = tk.Frame(self.left_frame)
+        self.metrics_frame.grid(row=2, column=0, columnspan=1, padx=10,
+                                pady=10, sticky="nsew")
+        self.metrics_frame.grid_propagate(False)
+
+        # right side: graph
+        self.canvas_frame = tk.Frame(self, width=1000, height=400)
+        self.canvas_frame.grid(row=0, column=1, padx=10, pady=10,
+                               sticky="nsew")
+        self.canvas_frame.grid_propagate(False)
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -184,6 +202,7 @@ class GenericDataPanel(tk.Frame):
         """
         Get the data from the client
         """
+        request_helper = RequestHelper(self.http_obj)
         params_spec = self.http_obj.parameters_spec
         query_params = {}
         path_params = {}
@@ -211,24 +230,28 @@ class GenericDataPanel(tk.Frame):
 
         # Set the parameters in the request helper
         if path_params:
-            self.request_helper.set_path_params(path_params)
+            request_helper.set_path_params(path_params)
             self.http_obj.path_params = path_params
         if query_params:
-            self.request_helper.set_query_params(query_params)
+            request_helper.set_query_params(query_params)
             self.http_obj.request_args['params'] = query_params
         if header_params:
-            self.request_helper.set_header_params(header_params)
+            request_helper.set_header_params(header_params)
             self.http_obj.request_args['headers'] = header_params
         if cookie_params:
-            self.request_helper.set_cookie_params(cookie_params)
+            request_helper.set_cookie_params(cookie_params)
+            self.http_obj.request_args['cookies'] = cookie_params
 
-        self.request_helper.make_request()
+        request_helper.make_request()
 
-        if self.request_helper.response.status_code == 200:
+        if request_helper.response.status_code == 200:
             try:
-                self.body = self.request_helper.response.json()
+                self.body = request_helper.response.json()
             except requests.exceptions.JSONDecodeError:
-                self.body = self.request_helper.response.text
+                self.body = request_helper.response.text
+
+        self.http_obj.metrics = request_helper.metrics
+        self.show_metrics()
 
     def extract_fields(self, schema, components, parent_key=''):
         """
@@ -280,8 +303,31 @@ class GenericDataPanel(tk.Frame):
             fields = self.extract_fields(schema, components)
             self.x_axis_dropdown['values'] = fields
             self.y_axis_dropdown['values'] = fields
+
+            if self.http_obj.x_axis:
+                self.x_axis_var.set(self.http_obj.x_axis)
+            if self.http_obj.y_axis:
+                self.y_axis_var.set(self.http_obj.y_axis)
         else:
             print("No 200 response found in response_spec")
+
+    def show_metrics(self):
+        """
+        Show the metrics for the response
+        """
+        if not self.body:
+            self.get_data()
+
+        if not self.body:
+            print("No data found in the response")
+            return
+        print("Showing metrics...")
+
+        print("Metrics:", self.http_obj.metrics)
+
+        pretty_metrics = json.dumps(self.http_obj.metrics, indent=4)
+        create_text_with_scrollbar(self.metrics_frame, pretty_metrics,
+                                   expand=False)
 
     def generate_graph(self):
         """
@@ -290,65 +336,66 @@ class GenericDataPanel(tk.Frame):
         if not self.body:
             self.get_data()
 
-        x_field = self.x_axis_var.get()
-        y_field = self.y_axis_var.get()
-
-        if not x_field or not y_field:
+        if self.x_axis_var.get() == '' or self.y_axis_var.get() == '':
             print("Please select both X-axis and Y-axis fields.")
             return
+
+        x_field = self.x_axis_var.get()
+        y_field = self.y_axis_var.get()
 
         x_data = find_value_by_key(self.body, x_field)
         y_data = find_value_by_key(self.body, y_field)
 
-        if x_data is None or y_data is None:
-            print(f"Could not find data for fields: {x_field}, {y_field}")
-            print("Re-fetching data...")
-            self.get_data()
+        # if x_data is None or y_data is None:
+        #     print(f"Could not find data for fields: {x_field}, {y_field}")
+        #     print("Re-fetching data...")
+        #     self.get_data()
+        #
+        #     x_data = find_value_by_key(self.body, x_field)
+        #     y_data = find_value_by_key(self.body, y_field)
 
-            x_data = find_value_by_key(self.body, x_field)
-            y_data = find_value_by_key(self.body, y_field)
+        # Clear the canvas_frame before adding new widgets
+        for widget in self.canvas_frame.winfo_children():
+            widget.destroy()
 
-        # Check if x_data or y_data are strings representing time and convert them
-        try:
-            x_data = [
-                datetime.fromisoformat(item) if isinstance(item, str) else item
-                for item in x_data]
-        except ValueError:
-            print(f"Error converting x_data to datetime: {x_data}")
-            return
+        # check if axes are lists
+        ############################################################
+        # Should know from the schema if the data is a list or not!!
+        ############################################################
+        if not isinstance(x_data, list) or not isinstance(y_data, list):
+            pretty_response = json.dumps(self.body, indent=4)
+            create_text_with_scrollbar(self.canvas_frame, pretty_response)
 
-        try:
-            y_data = [
-                datetime.fromisoformat(item) if isinstance(item, str) else item
-                for item in y_data]
-        except ValueError:
-            print(f"Error converting y_data to datetime: {y_data}")
-            return
-
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(x_data, y_data, marker='o')
-        ax.set_xlabel(x_field)
-        ax.set_ylabel(y_field)
-        ax.set_title(f"{x_field} vs {y_field}")
-
-        # Embed the plot in the tkinter frame
-        if self.canvas:
-            self.canvas.get_tk_widget().destroy()
-        self.canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
-        self.canvas.draw()
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-
-def find_value_by_key(data, key):
-    """
-    Recursively search through the response body to find the value for the given key
-    """
-    keys = key.split('.')
-    for k in keys:
-        if isinstance(data, dict):
-            data = data.get(k)
-        elif isinstance(data, list):
-            data = [item.get(k) for item in data if isinstance(item, dict)]
         else:
-            return None
-    return data
+            # Check if x_data or y_data are strings representing time and convert them
+            try:
+                x_data = [
+                    datetime.fromisoformat(item) if isinstance(item,
+                                                               str) else item
+                    for item in x_data]
+            except ValueError:
+                print(f"Error converting x_data to datetime: {x_data}")
+                return
+
+            try:
+                y_data = [
+                    datetime.fromisoformat(item) if isinstance(item,
+                                                               str) else item
+                    for item in y_data]
+            except ValueError:
+                print(f"Error converting y_data to datetime: {y_data}")
+                return
+
+            # Create a plot
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.plot(x_data, y_data, marker='o')
+            ax.set_xlabel(x_field)
+            ax.set_ylabel(y_field)
+            ax.set_title(f"{x_field} vs {y_field}")
+
+            canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+            self.http_obj.x_axis = x_field
+            self.http_obj.y_axis = y_field
