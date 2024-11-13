@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 
+from msys.core.generators.open_api.models.http_model import HTTPModel
 from msys.core.ui.generic_data_panel import GenericDataPanel
 from shared_data import shared_queue, update_event
 from utils import save_client_file_obj, load_client_file_obj
@@ -74,7 +75,7 @@ class RootApp(tk.Tk):
         if self.current_panel:
             self.current_panel.grid_remove()
         self.current_panel = self.panels[panel_name]
-        self.current_panel.grid(row=2, column=0, columnspan=3, padx=10,
+        self.current_panel.grid(row=1, column=0, columnspan=3, padx=10,
                                 pady=10, sticky="nsew")
 
         # get params before getting data
@@ -100,13 +101,20 @@ class RootApp(tk.Tk):
         button = tk.Button(top, text="Create",
                            command=lambda: self.template_to_panel(
                                name_entry.get(),
-                               self.panel_templates[
-                                   drop_down.get()]))
+                               self.panel_templates[drop_down.get()]))
         button.pack()
 
     def template_to_panel(self, name, http_obj):
         # Add a new panel to the list
-        self.panels[name] = GenericDataPanel(self, name, http_obj)
+        new_panel_data = HTTPModel(PATH="", SERVER="", path_params={},
+                                   request_args={}, url="", response_body={},
+                                   metrics={}, x_axis="", y_axis="",
+                                   parameters_spec={}, response_spec={},
+                                   components_spec={})
+        for k, v in http_obj:
+            setattr(new_panel_data, k, v)
+
+        self.panels[name] = GenericDataPanel(self, name, new_panel_data)
         self.update_dropdown()
 
     def save_data(self):

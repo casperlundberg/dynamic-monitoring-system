@@ -7,6 +7,7 @@ import requests
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+from deifinitions import LEFT_PANEL_WIDTH
 from msys.core.generators.open_api.OOP_generator.oop_request_helper import \
     RequestHelper
 from utils import find_value_by_key
@@ -31,14 +32,14 @@ class GenericDataPanel(tk.Frame):
         self.body = None
 
         # Create frames for layout
-        self.left_frame = tk.Frame(self, width=600, height=1000)
+        self.left_frame = tk.Frame(self, width=LEFT_PANEL_WIDTH, height=1000)
         self.left_frame.grid(row=0, column=0, padx=10, pady=10,
                              sticky="nw")
         self.left_frame.grid_propagate(False)
 
         # Create a canvas with a vertical scrollbar for the parameters
         # top-left
-        self.scroll_canvas = tk.Canvas(self.left_frame,
+        self.scroll_canvas = tk.Canvas(self.left_frame, width=LEFT_PANEL_WIDTH,
                                        height=400)
         self.scroll_canvas.grid(row=0, column=0, sticky="nsew")
 
@@ -59,9 +60,11 @@ class GenericDataPanel(tk.Frame):
                                       "all")))
 
         # mid-left with the axis dropdowns and create graph button
-        self.axis_controls_frame = tk.Frame(self.left_frame)
+        self.axis_controls_frame = tk.Frame(self.left_frame,
+                                            width=LEFT_PANEL_WIDTH)
         self.axis_controls_frame.grid(row=1, column=0, columnspan=2,
                                       padx=10, pady=10, sticky="nsew")
+        # self.axis_controls_frame.grid_propagate(False)
 
         # Add widgets to axis_controls_frame
         self.x_axis_var = tk.StringVar()
@@ -95,7 +98,8 @@ class GenericDataPanel(tk.Frame):
         self.graph_button.grid(row=2, column=0, columnspan=2, pady=10)
 
         # bottom-left with the response metrics
-        self.metrics_frame = tk.Frame(self.left_frame)
+        self.metrics_frame = tk.Frame(self.left_frame,
+                                      width=LEFT_PANEL_WIDTH)
         self.metrics_frame.grid(row=2, column=0, columnspan=1, padx=10,
                                 pady=10, sticky="nsew")
         self.metrics_frame.grid_propagate(False)
@@ -120,7 +124,9 @@ class GenericDataPanel(tk.Frame):
 
         for idx, param in enumerate(params_spec):
             param_name = param.get("name")
-            param_label = tk.Label(self.inner_frame, text=param_name)
+            required = " (Required)" if param.get("required") else ""
+            param_label = tk.Label(self.inner_frame,
+                                   text=param_name + required)
             param_label.grid(row=idx, column=0, padx=10, pady=5, sticky="e")
 
             enum_values = self.find_enum_values(param.get("schema", {}))
