@@ -14,6 +14,12 @@ from utils import find_value_by_key
 
 
 def create_text_with_scrollbar(parent, text_content, expand=True):
+    """
+    Create a text widget with a scrollbar
+    """
+    for widget in parent.winfo_children():
+        widget.destroy()
+
     body_canvas = tk.Text(parent, wrap=tk.WORD)
     scrollbar = tk.Scrollbar(parent, command=body_canvas.yview)
     body_canvas.configure(yscrollcommand=scrollbar.set)
@@ -30,6 +36,9 @@ class GenericDataPanel(tk.Frame):
         self.name = panel_name
         self.http_obj = http_obj
         self.body = None
+
+        self.required_fields = []
+        self.missing_fields = []
 
         # Create frames for layout
         self.left_frame = tk.Frame(self, width=LEFT_PANEL_WIDTH, height=1000)
@@ -124,7 +133,11 @@ class GenericDataPanel(tk.Frame):
 
         for idx, param in enumerate(params_spec):
             param_name = param.get("name")
-            required = " (Required)" if param.get("required") else ""
+            required = ""
+            if param.get("required"):
+                required = " (Required)"
+                self.required_fields.append(param_name)
+
             param_label = tk.Label(self.inner_frame,
                                    text=param_name + required)
             param_label.grid(row=idx, column=0, padx=10, pady=5, sticky="e")
@@ -219,6 +232,10 @@ class GenericDataPanel(tk.Frame):
             param_name = param.get("name")
             param_value = self.text_boxes[param_name].get()
 
+            # check that required fields have values in them
+            if param.get("required") and not param_value:
+                self.missing_fields.append(param_name)
+
             if param_value:  # Only add the parameter if it has a value
                 if param.get("in") == "path":
                     path_params[param_name] = param_value
@@ -234,6 +251,10 @@ class GenericDataPanel(tk.Frame):
                 elif param.get("in") == "cookie":
                     cookie_params[param_name] = param_value
 
+        if self.missing_fields:
+            print(f"Missing required fields: {self.missing_fields}")
+            return
+
         # Set the parameters in the request helper
         if path_params:
             request_helper.set_path_params(path_params)
@@ -248,6 +269,7 @@ class GenericDataPanel(tk.Frame):
             request_helper.set_cookie_params(cookie_params)
             self.http_obj.request_args['cookies'] = cookie_params
 
+        # make the request
         request_helper.make_request()
 
         if request_helper.response.status_code == 200:
@@ -322,14 +344,8 @@ class GenericDataPanel(tk.Frame):
         Show the metrics for the response
         """
         if not self.body:
-            self.get_data()
-
-        if not self.body:
             print("No data found in the response")
             return
-        print("Showing metrics...")
-
-        print("Metrics:", self.http_obj.metrics)
 
         pretty_metrics = json.dumps(self.http_obj.metrics, indent=4)
         create_text_with_scrollbar(self.metrics_frame, pretty_metrics,
@@ -339,8 +355,21 @@ class GenericDataPanel(tk.Frame):
         """
         Generate a graph based on the selected X-axis and Y-axis data
         """
-        if not self.body:
-            self.get_data()
+        # # Clear the metrics_frame before adding new widgets
+        # for widget in self.metrics_frame.winfo_children():
+        #     widget.destroy()
+
+        # Clear the canvas_frame before adding new widgets
+        # for widget in self.canvas_frame.winfo_children():
+        #     widget.destroy()
+
+        self.get_data()
+
+        if self.missing_fields:
+            # show pop-up with missing fields
+
+            self.missing_fields.clear()
+            return
 
         if self.x_axis_var.get() == '' or self.y_axis_var.get() == '':
             print("Please select both X-axis and Y-axis fields.")
@@ -359,10 +388,6 @@ class GenericDataPanel(tk.Frame):
         #
         #     x_data = find_value_by_key(self.body, x_field)
         #     y_data = find_value_by_key(self.body, y_field)
-
-        # Clear the canvas_frame before adding new widgets
-        for widget in self.canvas_frame.winfo_children():
-            widget.destroy()
 
         # check if axes are lists
         ############################################################
@@ -398,6 +423,9 @@ class GenericDataPanel(tk.Frame):
             ax.set_xlabel(x_field)
             ax.set_ylabel(y_field)
             ax.set_title(f"{x_field} vs {y_field}")
+
+            for widget in self.canvas_frame.winfo_children():
+                widget.destroy()
 
             canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
             canvas.draw()

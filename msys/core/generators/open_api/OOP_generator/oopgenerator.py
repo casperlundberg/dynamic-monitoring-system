@@ -1,5 +1,6 @@
 from msys.core.generators.open_api.models.http_model import HTTPModel
-from utils import parse_server_urls, save_client_file_obj
+from msys.core.generators.open_api.OOP_generator.parser_functions import \
+    parse_server_urls
 
 
 class OOPGenerator:
@@ -51,4 +52,3 @@ class OOPGenerator:
 
             filename = http_obj.PATH.replace("/", "_")[1:]
             self.http_data_objs[filename] = http_obj
-            # save_client_file_obj(http_obj, filename)

@@ -5,46 +5,17 @@ from deifinitions import ROOT_DIR, GENERATED_CODE_FOLDER, MSYS_FOLDER, \
     SAVED_OBJECTS_FOLDER, GENERATED_CODE_SAVED_CLIENTS_FOLDER
 
 
-def parse_server_variables(servers_obj):
-    server_variables = []
-    for server in servers_obj:
-        var = server.get("variables")
-        if var is not None:
-            server_variables.append(var)
-    return server_variables
-
-
-def replace_server_variables(server_url, server_variables):
-    for variable in server_variables:
-        server_url = server_url.replace(f"{{{variable}}}",
-                                        server_variables[variable])
-    return server_url
-
-
-def parse_server_urls(servers_obj):
-    server_urls = []
-    server_variables = parse_server_variables(servers_obj)
-    for server in servers_obj:
-        url = server.get("url")
-
-        if not url.startswith("http"):
-            raise ValueError(
-                "Invalid URL, must be full URL. Current URL: " + url)
-
-        if len(server_variables) > 0:
-            parsed_url = replace_server_variables(url, server_variables)
-        else:
-            parsed_url = url
-
-        server_urls.append(parsed_url)
-    return server_urls
-
-
 def generated_folder():
+    """
+    Get the generated folder path
+    """
     return os.path.join(ROOT_DIR, MSYS_FOLDER, GENERATED_CODE_FOLDER)
 
 
-def save_client_file_obj(http_obj, filename, deploy_path=None):
+def serialize_save_file(http_obj, filename, deploy_path=None):
+    """
+    Save an object to the given filename
+    """
     # Save the client file data
     if deploy_path is None:
         deploy_path = generated_folder()
@@ -59,7 +30,10 @@ def save_client_file_obj(http_obj, filename, deploy_path=None):
         pickle.dump(http_obj, f, pickle.HIGHEST_PROTOCOL)
 
 
-def load_client_file_obj(filename, deploy_path=None):
+def deserialize_save_file(filename, deploy_path=None):
+    """
+    Load an object from the given filename
+    """
     # Check if filename is provided
     if not filename:
         raise ValueError("Filename cannot be None or empty")
@@ -86,6 +60,9 @@ def load_client_file_obj(filename, deploy_path=None):
 
 
 def nested_dict_keys_to_list(d):
+    """
+    Convert nested dictionary keys to a list
+    """
     for k, v in d.items():
         if isinstance(v, dict):
             yield from nested_dict_keys_to_list(v)
@@ -94,6 +71,9 @@ def nested_dict_keys_to_list(d):
 
 
 def nested_dict_get_value(d, key):
+    """
+    Search through a nested dictionary to find the value for the given key
+    """
     for k, v in d.items():
         if k == key:
             return v
@@ -103,7 +83,7 @@ def nested_dict_get_value(d, key):
 
 def find_value_by_key(data, key):
     """
-    Recursively search through the response body to find the value for the given key
+    Find a value in a dictionary from a key (ex: parent.child.child)
     """
     keys = key.split('.')
     for k in keys:

@@ -4,7 +4,7 @@ from tkinter import ttk
 from msys.core.generators.open_api.models.http_model import HTTPModel
 from msys.core.ui.generic_data_panel import GenericDataPanel
 from shared_data import shared_queue, update_event
-from utils import save_client_file_obj, load_client_file_obj
+from utils import serialize_save_file, deserialize_save_file
 
 
 class RootApp(tk.Tk):
@@ -106,13 +106,17 @@ class RootApp(tk.Tk):
 
     def template_to_panel(self, name, http_obj):
         # Add a new panel to the list
-        new_panel_data = HTTPModel(PATH="", SERVER="", path_params={},
-                                   request_args={}, url="", response_body={},
-                                   metrics={}, x_axis="", y_axis="",
-                                   parameters_spec={}, response_spec={},
-                                   components_spec={})
-        for k, v in http_obj:
-            setattr(new_panel_data, k, v)
+        new_panel_data = HTTPModel(PATH=http_obj.PATH, SERVER=http_obj.SERVER,
+                                   path_params=http_obj.path_params,
+                                   request_args=http_obj.request_args,
+                                   url=http_obj.url,
+                                   response_body=http_obj.response_body,
+                                   metrics=http_obj.metrics,
+                                   x_axis=http_obj.x_axis,
+                                   y_axis=http_obj.y_axis,
+                                   parameters_spec=http_obj.parameters_spec,
+                                   response_spec=http_obj.response_spec,
+                                   components_spec=http_obj.components_spec)
 
         self.panels[name] = GenericDataPanel(self, name, new_panel_data)
         self.update_dropdown()
@@ -127,14 +131,14 @@ class RootApp(tk.Tk):
                           self.panels.items()}
 
         # Save http_data_objs to the file
-        save_client_file_obj(http_data_objs, self.save_file_name)
+        serialize_save_file(http_data_objs, self.save_file_name)
         print(f"Data saved to {self.save_file_name}: {http_data_objs}")
 
         # Save unique_endpoints to the file
-        save_client_file_obj(self.panel_templates, "unique_endpoints")
+        serialize_save_file(self.panel_templates, "unique_endpoints")
 
     def load_data(self):
-        http_data_objs = load_client_file_obj(self.save_file_name)
+        http_data_objs = deserialize_save_file(self.save_file_name)
         if http_data_objs is None:
             return
         for k, v in http_data_objs.items():
@@ -147,4 +151,4 @@ class RootApp(tk.Tk):
         print(f"Data loaded from {self.save_file_name}")
 
         # Load unique_endpoints from the file
-        self.panel_templates = load_client_file_obj("unique_endpoints")
+        self.panel_templates = deserialize_save_file("unique_endpoints")
