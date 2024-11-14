@@ -30,25 +30,31 @@ class OOPGenerator:
             server_obj = path_obj.get("servers")
             server_url = parse_server_urls(server_obj)[0]
 
+        http_method = None
         if path_obj.get("get") is not None:
-            path_str = str(path)
-            # path params should be fetched from the parameters obj
-            # along with query, header, cookie params
-            path_params = {part.split("}")[0]: 0 for part in
-                           path_str.split("{")[1:]}
-            url = server_url + path_str
-            parameters_obj = path_obj.get("get").get("parameters")
-            response_obj = path_obj.get("get").get("responses")
-            components_obj = self.spec.get("components")
+            http_method = "GET"
+        else:
+            http_method = "OPTIONS"
 
-            http_obj = HTTPModel(SERVER=server_url, PATH=path_str,
-                                 path_params=path_params,
-                                 request_args={}, url=url,
-                                 parameters_spec=parameters_obj,
-                                 response_spec=response_obj,
-                                 response_body={}, metrics={},
-                                 components_spec=components_obj,
-                                 x_axis="", y_axis="")
+        path_str = str(path)
+        # path params should be fetched from the parameters obj
+        # along with query, header, cookie params
+        path_params = {part.split("}")[0]: 0 for part in
+                       path_str.split("{")[1:]}
+        url = server_url + path_str
+        parameters_obj = path_obj.get("get").get("parameters")
+        response_obj = path_obj.get("get").get("responses")
+        components_obj = self.spec.get("components")
 
-            filename = http_obj.PATH.replace("/", "_")[1:]
-            self.http_data_objs[filename] = http_obj
+        http_obj = HTTPModel(SERVER=server_url, PATH=path_str,
+                             path_params=path_params,
+                             request_args={}, url=url,
+                             parameters_spec=parameters_obj,
+                             response_spec=response_obj,
+                             response_body={}, metrics={},
+                             components_spec=components_obj,
+                             x_axis="", y_axis="",
+                             http_method=http_method)
+
+        filename = http_obj.PATH.replace("/", "_")[1:]
+        self.http_data_objs[filename] = http_obj
