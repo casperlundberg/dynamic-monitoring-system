@@ -1,4 +1,5 @@
-from msys.core.generators.open_api.models.http_model import HTTPModel
+from msys.core.generators.open_api.models.http_model import HTTPModel, \
+    HistoricalData
 from msys.core.generators.open_api.OOP_generator.parser_functions import \
     parse_server_urls
 
@@ -31,10 +32,21 @@ class OOPGenerator:
             server_url = parse_server_urls(server_obj)[0]
 
         http_method = None
+        parameters_obj = None
+        response_obj = None
         if path_obj.get("get") is not None:
             http_method = "GET"
+            parameters_obj = path_obj.get("get").get("parameters")
+            response_obj = path_obj.get("get").get("responses")
         else:
             http_method = "OPTIONS"
+            # test all methods to get the parameters and response
+            for method in path_obj:
+                if method != "servers":
+                    http_method = method
+                    parameters_obj = path_obj.get(method).get("parameters")
+                    response_obj = path_obj.get(method).get("responses")
+                    break
 
         path_str = str(path)
         # path params should be fetched from the parameters obj
@@ -42,9 +54,15 @@ class OOPGenerator:
         path_params = {part.split("}")[0]: 0 for part in
                        path_str.split("{")[1:]}
         url = server_url + path_str
-        parameters_obj = path_obj.get("get").get("parameters")
-        response_obj = path_obj.get("get").get("responses")
+
         components_obj = self.spec.get("components")
+
+        # fix response_type to be fetched from schema as if a list is found
+        # it is a list of objects, otherwise it is a single object
+        # Behave differently in the ui based on this.
+        # This maybe belongs to the ui, so it can choose how to display the data
+        # based on the type of the response and which
+        # values that is chosen as x and y-axis
 
         http_obj = HTTPModel(SERVER=server_url, PATH=path_str,
                              path_params=path_params,
@@ -54,7 +72,8 @@ class OOPGenerator:
                              response_body={}, metrics={},
                              components_spec=components_obj,
                              x_axis="", y_axis="",
-                             http_method=http_method)
+                             http_method=http_method,
+                             response_type="", historical_data=[])
 
         filename = http_obj.PATH.replace("/", "_")[1:]
         self.http_data_objs[filename] = http_obj

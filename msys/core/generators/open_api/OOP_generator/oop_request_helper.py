@@ -10,6 +10,7 @@ class RequestHelper:
         self.path_params = http_obj.path_params or {}
         self.request_args = http_obj.request_args or {}
         self.url = http_obj.SERVER + http_obj.PATH or http_obj.url
+        self.http_method = http_obj.http_method
         self.response = None
         self.metrics = None
 
@@ -34,9 +35,15 @@ class RequestHelper:
         self.url = self.replace_placeholders(self.url)
 
         if self.request_args:
-            self.response = requests.get(self.url, **self.request_args)
+            if self.http_method == "GET":
+                self.response = requests.get(self.url, **self.request_args)
+            else:
+                self.response = requests.options(self.url, **self.request_args)
         else:
-            self.response = requests.get(self.url)
+            if self.http_method == "GET":
+                self.response = requests.get(self.url)
+            else:
+                self.response = requests.options(self.url)
 
         self.metrics = {
             "response_time_ms": self.response.elapsed.total_seconds() * 1000,

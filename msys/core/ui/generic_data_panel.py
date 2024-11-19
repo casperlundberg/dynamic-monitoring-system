@@ -3,6 +3,8 @@ from datetime import datetime
 import tkinter as tk
 from tkinter import ttk
 
+from dateutil.parser import parse
+
 import requests
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -10,7 +12,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from deifinitions import LEFT_PANEL_WIDTH
 from msys.core.generators.open_api.OOP_generator.oop_request_helper import \
     RequestHelper
-from utils import find_value_by_key
+from msys.core.generators.open_api.models.http_model import HistoricalData
+from utils import find_value_by_key, is_key_array_or_nested_deeper, \
+    is_array_nested, find_history_data_by_key
 
 
 def create_text_with_scrollbar(parent, text_content, expand=True):
@@ -131,37 +135,45 @@ class GenericDataPanel(tk.Frame):
         params_spec = self.http_obj.parameters_spec
         self.text_boxes = {}  # Ensure self.text_boxes is initialized
 
-        for idx, param in enumerate(params_spec):
-            param_name = param.get("name")
-            required = ""
-            if param.get("required"):
-                required = " (Required)"
-                self.required_fields.append(param_name)
+        if params_spec:
+            for idx, param in enumerate(params_spec):
+                param_name = param.get("name")
+                required = ""
+                if param.get("required"):
+                    required = " (Required)"
+                    self.required_fields.append(param_name)
 
-            param_label = tk.Label(self.inner_frame,
-                                   text=param_name + required)
-            param_label.grid(row=idx, column=0, padx=10, pady=5, sticky="e")
+                param_label = tk.Label(self.inner_frame,
+                                       text=param_name + required)
+                param_label.grid(row=idx, column=0, padx=10, pady=5,
+                                 sticky="e")
 
-            enum_values = self.find_enum_values(param.get("schema", {}))
-            if enum_values:
-                # Create a dropdown for enum values
-                selected_option = tk.StringVar()
-                dropdown = ttk.Combobox(self.inner_frame,
-                                        textvariable=selected_option,
-                                        values=enum_values,
-                                        width=40)
-                dropdown.grid(row=idx, column=1, padx=10, pady=5, sticky="w")
-                self.text_boxes[param_name] = dropdown
-                dropdown.bind("<<ComboboxSelected>>",
-                              self.update_http_obj_from_ui)
-            else:
-                # Create a text box for other parameters
-                text_box = tk.Entry(self.inner_frame, width=40)
-                text_box.grid(row=idx, column=1, padx=10, pady=5, sticky="w")
-                self.text_boxes[param_name] = text_box
-                text_box.bind("<KeyRelease>", self.update_http_obj_from_ui)
+                enum_values = self.find_enum_values(param.get("schema", {}))
+                if enum_values:
+                    # Create a dropdown for enum values
+                    selected_option = tk.StringVar()
+                    dropdown = ttk.Combobox(self.inner_frame,
+                                            textvariable=selected_option,
+                                            values=enum_values,
+                                            width=40)
+                    dropdown.grid(row=idx, column=1, padx=10, pady=5,
+                                  sticky="w")
+                    self.text_boxes[param_name] = dropdown
+                    dropdown.bind("<<ComboboxSelected>>",
+                                  self.update_http_obj_from_ui)
+                else:
+                    # Create a text box for other parameters
+                    text_box = tk.Entry(self.inner_frame, width=40)
+                    text_box.grid(row=idx, column=1, padx=10, pady=5,
+                                  sticky="w")
+                    self.text_boxes[param_name] = text_box
+                    text_box.bind("<KeyRelease>", self.update_http_obj_from_ui)
 
         self.populate_ui_from_http_obj()
+
+        # Ensure response_spec is set before updating dropdowns
+        if not self.http_obj.response_spec:
+            print("Warning: response_spec is not set for this panel.")
         self.update_dropdowns()  # Update dropdowns immediately
 
     def populate_ui_from_http_obj(self):
@@ -228,60 +240,89 @@ class GenericDataPanel(tk.Frame):
         header_params = {}
         cookie_params = {}
 
-        for param in params_spec:
-            param_name = param.get("name")
-            param_value = self.text_boxes[param_name].get()
+        if params_spec:
+            for param in params_spec:
+                param_name = param.get("name")
+                param_value = self.text_boxes[param_name].get()
 
-            # check that required fields have values in them
-            if param.get("required") and not param_value:
-                self.missing_fields.append(param_name)
+                # check that required fields have values in them
+                if param.get("required") and not param_value:
+                    self.missing_fields.append(param_name)
 
-            if param_value:  # Only add the parameter if it has a value
-                if param.get("in") == "path":
-                    path_params[param_name] = param_value
-                elif param.get("in") == "query":
-                    if self.find_enum_values(param.get("schema", {})):
-                        enums = self.find_enum_values(param.get("schema", {}))
-                        if param_value in enums:
+                if param_value:  # Only add the parameter if it has a value
+                    if param.get("in") == "path":
+                        path_params[param_name] = param_value
+                    elif param.get("in") == "query":
+                        if self.find_enum_values(param.get("schema", {})):
+                            enums = self.find_enum_values(
+                                param.get("schema", {}))
+                            if param_value in enums:
+                                query_params[param_name] = param_value
+                        else:
                             query_params[param_name] = param_value
-                    else:
-                        query_params[param_name] = param_value
-                elif param.get("in") == "header":
-                    header_params[param_name] = param_value
-                elif param.get("in") == "cookie":
-                    cookie_params[param_name] = param_value
+                    elif param.get("in") == "header":
+                        header_params[param_name] = param_value
+                    elif param.get("in") == "cookie":
+                        cookie_params[param_name] = param_value
 
-        if self.missing_fields:
-            print(f"Missing required fields: {self.missing_fields}")
-            return
+            if self.missing_fields:
+                print(f"Missing required fields: {self.missing_fields}")
+                return
 
-        # Set the parameters in the request helper
-        if path_params:
-            request_helper.set_path_params(path_params)
-            self.http_obj.path_params = path_params
-        if query_params:
-            request_helper.set_query_params(query_params)
-            self.http_obj.request_args['params'] = query_params
-        if header_params:
-            request_helper.set_header_params(header_params)
-            self.http_obj.request_args['headers'] = header_params
-        if cookie_params:
-            request_helper.set_cookie_params(cookie_params)
-            self.http_obj.request_args['cookies'] = cookie_params
+            # Set the parameters in the request helper
+            if path_params:
+                request_helper.set_path_params(path_params)
+                self.http_obj.path_params = path_params
+            if query_params:
+                request_helper.set_query_params(query_params)
+                self.http_obj.request_args['params'] = query_params
+            if header_params:
+                request_helper.set_header_params(header_params)
+                self.http_obj.request_args['headers'] = header_params
+            if cookie_params:
+                request_helper.set_cookie_params(cookie_params)
+                self.http_obj.request_args['cookies'] = cookie_params
 
         # make the request
         request_helper.make_request()
+        status_code = request_helper.response.status_code
 
-        if request_helper.response.status_code == 200:
+        if str(status_code).startswith('2'):
             try:
                 self.body = request_helper.response.json()
+                if is_array_nested(self.body):
+                    self.http_obj.response_type = "list"
+                else:
+                    self.http_obj.response_type = "single"
+                    timestamp = int(datetime.now().timestamp())
+                    date_string = datetime.fromtimestamp(timestamp).strftime(
+                        '%Y-%m-%d %H:%M:%S')
+                    history_data = HistoricalData(body=self.body,
+                                                  metrics=request_helper.metrics,
+                                                  timestamp=date_string)
+                    self.http_obj.historical_data.append(history_data)
+
             except requests.exceptions.JSONDecodeError:
                 self.body = request_helper.response.text
+                timestamp = int(datetime.now().timestamp())
+                date_string = datetime.fromtimestamp(timestamp).strftime(
+                    '%Y-%m-%d %H:%M:%S')
+                history_data = HistoricalData(body={},
+                                              metrics=request_helper.metrics,
+                                              timestamp=date_string)
+                self.http_obj.historical_data.append(history_data)
 
-        self.http_obj.metrics = request_helper.metrics
-        self.show_metrics()
+        print("http_obj.historical_data:\n", self.http_obj.historical_data)
 
-    def extract_fields(self, schema, components, parent_key=''):
+        if self.body:
+            self.http_obj.response_body = self.body
+            self.http_obj.metrics = request_helper.metrics
+            self.show_metrics()
+
+        # self.http_obj.metrics = request_helper.metrics
+        # self.show_metrics()
+
+    def extract_fields(self, schema, components, parent_key='body'):
         """
         Recursively extract fields from the schema and components
         """
@@ -316,6 +357,10 @@ class GenericDataPanel(tk.Frame):
         Update the X-axis and Y-axis dropdowns with suitable fields from the OpenAPI schema
         """
         responses = self.http_obj.response_spec
+        metrics_keys = ["metrics.response_time_ms",
+                        "metrics.status_code",
+                        "metrics.content_type",
+                        "metrics.content_length", "timestamp"]
 
         if '200' in responses:
             content = responses['200'].get('content', {})
@@ -327,8 +372,13 @@ class GenericDataPanel(tk.Frame):
             else:
                 schema = {}
 
+            # get potential X and Y axis fields from the schema
             components = self.http_obj.components_spec
             fields = self.extract_fields(schema, components)
+
+            # Add the metrics keys to the fields
+            fields.extend(metrics_keys)
+
             self.x_axis_dropdown['values'] = fields
             self.y_axis_dropdown['values'] = fields
 
@@ -336,6 +386,11 @@ class GenericDataPanel(tk.Frame):
                 self.x_axis_var.set(self.http_obj.x_axis)
             if self.http_obj.y_axis:
                 self.y_axis_var.set(self.http_obj.y_axis)
+
+        # all 2xx responses
+        elif any([str(code).startswith('2') for code in responses.keys()]):
+            self.x_axis_dropdown['values'] = metrics_keys
+            self.y_axis_dropdown['values'] = metrics_keys
         else:
             print("No 200 response found in response_spec")
 
@@ -378,8 +433,27 @@ class GenericDataPanel(tk.Frame):
         x_field = self.x_axis_var.get()
         y_field = self.y_axis_var.get()
 
-        x_data = find_value_by_key(self.body, x_field)
-        y_data = find_value_by_key(self.body, y_field)
+        x_data = None
+        y_data = None
+
+        x_key_is_in_array = is_key_array_or_nested_deeper({"body": self.body},
+                                                          x_field)
+        y_key_is_in_array = is_key_array_or_nested_deeper({"body": self.body},
+                                                          y_field)
+
+        if not x_key_is_in_array and not y_key_is_in_array:
+            # The chosen fields are not in a list
+            # and therefore not suitable for plotting
+            print(
+                "The chosen fields are not in a list and therefore not suitable for direct plotting from body.")
+            history_data = self.http_obj.historical_data
+            x_data = find_history_data_by_key(history_data, x_field)
+            y_data = find_history_data_by_key(history_data, y_field)
+            print(f"x_data: {x_data}")
+            print(f"y_data: {y_data}")
+        else:
+            x_data = find_value_by_key({"body": self.body}, x_field)
+            y_data = find_value_by_key({"body": self.body}, y_field)
 
         # if x_data is None or y_data is None:
         #     print(f"Could not find data for fields: {x_field}, {y_field}")
@@ -396,25 +470,33 @@ class GenericDataPanel(tk.Frame):
         if not isinstance(x_data, list) or not isinstance(y_data, list):
             pretty_response = json.dumps(self.body, indent=4)
             create_text_with_scrollbar(self.canvas_frame, pretty_response)
+            print("Error: x_data and y_data must be lists.")
 
         else:
             # Check if x_data or y_data are strings representing time and convert them
             try:
                 x_data = [
-                    datetime.fromisoformat(item) if isinstance(item,
-                                                               str) else item
+                    parse(item) if isinstance(item, str) else item
                     for item in x_data]
             except ValueError:
+                pretty_response = json.dumps(self.body, indent=4)
+                create_text_with_scrollbar(self.canvas_frame, pretty_response)
                 print(f"Error converting x_data to datetime: {x_data}")
                 return
 
             try:
                 y_data = [
-                    datetime.fromisoformat(item) if isinstance(item,
-                                                               str) else item
+                    parse(item) if isinstance(item, str) else item
                     for item in y_data]
             except ValueError:
+                pretty_response = json.dumps(self.body, indent=4)
+                create_text_with_scrollbar(self.canvas_frame, pretty_response)
                 print(f"Error converting y_data to datetime: {y_data}")
+                return
+
+            if len(x_data) != len(y_data):
+                print(
+                    f"Error: x_data and y_data must have the same length. x_data length: {len(x_data)}, y_data length: {len(y_data)}")
                 return
 
             # Create a plot

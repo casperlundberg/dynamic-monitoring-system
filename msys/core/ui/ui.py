@@ -79,6 +79,7 @@ class RootApp(tk.Tk):
                                 pady=10, sticky="nsew")
 
         # get params before getting data
+        # if self.panels[panel_name].http_obj.http_method == "GET":
         self.current_panel.set_params_from_ui()
 
         # Show the "Get Data" button
@@ -116,7 +117,10 @@ class RootApp(tk.Tk):
                                    y_axis=http_obj.y_axis,
                                    parameters_spec=http_obj.parameters_spec,
                                    response_spec=http_obj.response_spec,
-                                   components_spec=http_obj.components_spec)
+                                   components_spec=http_obj.components_spec,
+                                   http_method=http_obj.http_method,
+                                   response_type=http_obj.response_type,
+                                   historical_data=http_obj.historical_data)
 
         self.panels[name] = GenericDataPanel(self, name, new_panel_data)
         self.update_dropdown()
