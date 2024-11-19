@@ -34,16 +34,21 @@ class RequestHelper:
     def make_request(self):
         self.url = self.replace_placeholders(self.url)
 
-        if self.request_args:
-            if self.http_method == "GET":
-                self.response = requests.get(self.url, **self.request_args)
+        try:
+            if self.request_args:
+                if self.http_method == "GET":
+                    self.response = requests.get(self.url, **self.request_args)
+                else:
+                    self.response = requests.options(self.url,
+                                                     **self.request_args)
             else:
-                self.response = requests.options(self.url, **self.request_args)
-        else:
-            if self.http_method == "GET":
-                self.response = requests.get(self.url)
-            else:
-                self.response = requests.options(self.url)
+                if self.http_method == "GET":
+                    self.response = requests.get(self.url)
+                else:
+                    self.response = requests.options(self.url)
+        except requests.exceptions.RequestException as e:
+            # self.response = e
+            print(f"HTTP Request Error: {e}")
 
         self.metrics = {
             "response_time_ms": self.response.elapsed.total_seconds() * 1000,

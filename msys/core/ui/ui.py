@@ -24,10 +24,6 @@ class RootApp(tk.Tk):
                                 command=self.save_data)
         save_button.grid(row=0, column=2, padx=10, pady=10)
 
-        # load_button = tk.Button(self, text="Load old session",
-        #                         command=self.load_data)
-        # load_button.grid(row=0, column=1, padx=10, pady=10)
-
         self.crete_new_panel = tk.Button(self, text="Create panel",
                                          command=self.create_panel_from_template)
         self.crete_new_panel.grid(row=0, column=1, padx=10, pady=10)
@@ -58,10 +54,28 @@ class RootApp(tk.Tk):
                    self.check_for_updates)  # Check for updates every 100ms
 
     def update_panels(self, generator):
+        # self.panel_templates.update(generator.http_data_objs.copy())
         # Update the UI with the new generator object
         for k, v in generator.http_data_objs.items():
             self.panels[k] = GenericDataPanel(self, k, v)
-            self.panel_templates[k] = v
+            # self.panel_templates[k] = v
+            self.panel_templates[k] = HTTPModel(
+                PATH=v.PATH,
+                SERVER=v.SERVER,
+                path_params=v.path_params.copy(),
+                request_args={},
+                url=v.url,
+                response_body={},
+                metrics={},
+                x_axis="",
+                y_axis="",
+                parameters_spec=v.parameters_spec.copy() if v.parameters_spec else {},
+                response_spec=v.response_spec.copy() if v.response_spec else {},
+                components_spec=v.components_spec.copy() if v.components_spec else {},
+                http_method=v.http_method,
+                response_type="",
+                historical_data=[]
+            )
         self.update_dropdown()
 
     def update_dropdown(self):
@@ -79,7 +93,6 @@ class RootApp(tk.Tk):
                                 pady=10, sticky="nsew")
 
         # get params before getting data
-        # if self.panels[panel_name].http_obj.http_method == "GET":
         self.current_panel.set_params_from_ui()
 
         # Show the "Get Data" button
@@ -107,20 +120,23 @@ class RootApp(tk.Tk):
 
     def template_to_panel(self, name, http_obj):
         # Add a new panel to the list
-        new_panel_data = HTTPModel(PATH=http_obj.PATH, SERVER=http_obj.SERVER,
-                                   path_params=http_obj.path_params,
-                                   request_args=http_obj.request_args,
-                                   url=http_obj.url,
-                                   response_body=http_obj.response_body,
-                                   metrics=http_obj.metrics,
-                                   x_axis=http_obj.x_axis,
-                                   y_axis=http_obj.y_axis,
-                                   parameters_spec=http_obj.parameters_spec,
-                                   response_spec=http_obj.response_spec,
-                                   components_spec=http_obj.components_spec,
-                                   http_method=http_obj.http_method,
-                                   response_type=http_obj.response_type,
-                                   historical_data=http_obj.historical_data)
+        new_panel_data = HTTPModel(
+            PATH=http_obj.PATH,
+            SERVER=http_obj.SERVER,
+            path_params=http_obj.path_params.copy(),
+            request_args=http_obj.request_args.copy(),
+            url=http_obj.url,
+            response_body={},
+            metrics={},
+            x_axis="",
+            y_axis="",
+            parameters_spec=http_obj.parameters_spec.copy(),
+            response_spec=http_obj.response_spec.copy(),
+            components_spec=http_obj.components_spec.copy(),
+            http_method=http_obj.http_method,
+            response_type=http_obj.response_type,
+            historical_data=[]
+        )
 
         self.panels[name] = GenericDataPanel(self, name, new_panel_data)
         self.update_dropdown()

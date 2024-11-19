@@ -14,7 +14,7 @@ from msys.core.generators.open_api.OOP_generator.oop_request_helper import \
     RequestHelper
 from msys.core.generators.open_api.models.http_model import HistoricalData
 from utils import find_value_by_key, is_key_array_or_nested_deeper, \
-    is_array_nested, find_history_data_by_key
+    is_array_nested, find_history_data_by_key, find_properties_in_schema
 
 
 def create_text_with_scrollbar(parent, text_content, expand=True):
@@ -312,6 +312,9 @@ class GenericDataPanel(tk.Frame):
                                               timestamp=date_string)
                 self.http_obj.historical_data.append(history_data)
 
+        else:
+            self.body = None
+
         print("http_obj.historical_data:\n", self.http_obj.historical_data)
 
         if self.body:
@@ -319,15 +322,18 @@ class GenericDataPanel(tk.Frame):
             self.http_obj.metrics = request_helper.metrics
             self.show_metrics()
 
-        # self.http_obj.metrics = request_helper.metrics
-        # self.show_metrics()
+        return status_code
 
     def extract_fields(self, schema, components, parent_key='body'):
         """
         Recursively extract fields from the schema and components
         """
         fields = []
+
         if 'properties' in schema:
+            print("schema['properties']:\n", json.dumps(schema['properties'],
+                                                        indent=4), "\n")
+
             for key, value in schema['properties'].items():
                 full_key = f"{parent_key}.{key}" if parent_key else key
                 fields.append(full_key)
@@ -367,14 +373,23 @@ class GenericDataPanel(tk.Frame):
 
             if 'application/json' in content:
                 schema = content['application/json'].get('schema', {})
-            elif 'application/xml' in content:
-                schema = content['application/xml'].get('schema', {})
+            # elif 'application/xml' in content:
+            #     schema = content['application/xml'].get('schema', {})
             else:
                 schema = {}
 
             # get potential X and Y axis fields from the schema
             components = self.http_obj.components_spec
-            fields = self.extract_fields(schema, components)
+
+            if 'properties' not in schema:
+                prop_schema = {
+                    "properties": find_properties_in_schema(schema,
+                                                            components)}
+            else:
+                prop_schema = schema
+            fields = self.extract_fields(prop_schema, components)
+
+            print("fields: ", fields)
 
             # Add the metrics keys to the fields
             fields.extend(metrics_keys)
@@ -418,7 +433,13 @@ class GenericDataPanel(tk.Frame):
         # for widget in self.canvas_frame.winfo_children():
         #     widget.destroy()
 
-        self.get_data()
+        status_code = self.get_data()
+
+        if status_code == 404:
+            # pretty print
+            pretty_response = json.dumps(self.body, indent=4)
+            print("body:\n", pretty_response)
+            print("Status code 404: Not found")
 
         if self.missing_fields:
             # show pop-up with missing fields
@@ -433,9 +454,6 @@ class GenericDataPanel(tk.Frame):
         x_field = self.x_axis_var.get()
         y_field = self.y_axis_var.get()
 
-        x_data = None
-        y_data = None
-
         x_key_is_in_array = is_key_array_or_nested_deeper({"body": self.body},
                                                           x_field)
         y_key_is_in_array = is_key_array_or_nested_deeper({"body": self.body},
@@ -444,13 +462,15 @@ class GenericDataPanel(tk.Frame):
         if not x_key_is_in_array and not y_key_is_in_array:
             # The chosen fields are not in a list
             # and therefore not suitable for plotting
-            print(
-                "The chosen fields are not in a list and therefore not suitable for direct plotting from body.")
             history_data = self.http_obj.historical_data
             x_data = find_history_data_by_key(history_data, x_field)
             y_data = find_history_data_by_key(history_data, y_field)
             print(f"x_data: {x_data}")
             print(f"y_data: {y_data}")
+            if len(x_data) == 0 and len(y_data) == 0:  # if length is 0
+                pretty_response = json.dumps(self.body, indent=4)
+                create_text_with_scrollbar(self.canvas_frame, pretty_response)
+
         else:
             x_data = find_value_by_key({"body": self.body}, x_field)
             y_data = find_value_by_key({"body": self.body}, y_field)
