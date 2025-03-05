@@ -3,7 +3,7 @@
 # @return: True if inp is in enums, False otherwise
 import hashlib
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Generator
 
 import jsonref
 
@@ -49,8 +49,18 @@ def prep_paths_for_save(paths: Dict[str, Any], path: str, i: int) -> Dict[str, A
         paths[path] = [i]
     return paths
 
-def get_response(function_name: str) -> str:
-    pass
+def get_response(identifier: str):
+    # get data from datasource (currently a file)
+    with open('dummy_DB.json', 'r', encoding='utf-8') as f:
+        db = json.load(f)
+
+        if identifier in db:
+            def generate():
+                for msg in db[identifier]:
+                    yield json.dumps(msg) + '\n'
+
+            return generate()
+    return iter(["Could not find datasource"])
 
 
 def generate_hash(spec: Dict[str, Any]) -> str:
@@ -79,11 +89,13 @@ def load_specification(hash_value: str, filename: str = 'specifications.json') -
         print(f"Error: The file '{filename}' was not found or contains invalid JSON.")
         return {}
 
-def create_endpoint_identifier(spec: Dict[str, Any], path: str, method: str) -> str:
+# def create_path_identifier(spec: Dict[str, Any], path: str) -> str:
+#     hash_value = generate_hash(spec)
+#     return f"{path.replace('{','').replace('}','')}_{hash_value}"
+
+def create_identifier(spec: Dict[str, Any], path: str, method: str) -> str:
     hash_value = generate_hash(spec)
-    return f'{hash_value}_{path}_{method}'
-
-
+    return f"{method.lower()}{path.replace('/', '_').replace('{','').replace('}','')}_{hash_value}"[0:]
 
 # with open('../docs/openapi.json', 'r', encoding='utf-8') as f:
 #     data = json.load(f)

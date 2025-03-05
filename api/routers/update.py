@@ -4,6 +4,7 @@ from msys.core.generators.open_api.OOP_generator.oopgenerator import \
     OOPGenerator
 # from msys.core.generators.open_api.deployer import Deployer
 from shared_data import shared_queue, update_event
+from monitoring_backend.helper_functions import save_specification
 
 router = APIRouter()
 
@@ -17,6 +18,11 @@ async def put_update(spec: dict):
 
     if "openapi" in deref_spec:
         if deref_spec["openapi"].startswith("3.0"):
+
+            # new monitoring backend V3
+            save_specification(deref_spec)
+
+            # old ui
             generator = OOPGenerator(deref_spec)
             generator.generate_client_file_obj()
             # generator.generate_client_code()

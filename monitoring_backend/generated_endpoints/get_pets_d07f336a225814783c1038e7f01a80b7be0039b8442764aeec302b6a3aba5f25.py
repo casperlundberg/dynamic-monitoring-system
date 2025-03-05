@@ -1,0 +1,9 @@
+from flask import Blueprint, Response, stream_with_context
+from monitoring_backend.helper_functions import get_response
+
+blueprint_get_pets_d07f336a225814783c1038e7f01a80b7be0039b8442764aeec302b6a3aba5f25 = Blueprint('blueprint_get_pets_d07f336a225814783c1038e7f01a80b7be0039b8442764aeec302b6a3aba5f25', __name__)
+
+@blueprint_get_pets_d07f336a225814783c1038e7f01a80b7be0039b8442764aeec302b6a3aba5f25.route('/get/pets/d07f336a225814783c1038e7f01a80b7be0039b8442764aeec302b6a3aba5f25', methods=['GET'])
+def get_pets_d07f336a225814783c1038e7f01a80b7be0039b8442764aeec302b6a3aba5f25():
+    response_data = get_response('/get/pets/d07f336a225814783c1038e7f01a80b7be0039b8442764aeec302b6a3aba5f25')
+    return Response(response_data, content_type='application/json')
