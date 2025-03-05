@@ -1,5 +1,4 @@
-from msys.core.generators.open_api.models.http_model import HTTPModel, \
-    HistoricalData
+from msys.core.generators.open_api.models.http_model import HTTPModel
 from msys.core.generators.open_api.OOP_generator.parser_functions import \
     parse_server_urls
 
@@ -31,7 +30,6 @@ class OOPGenerator:
             server_obj = path_obj.get("servers")
             server_url = parse_server_urls(server_obj)[0]
 
-        http_method = None
         parameters_obj = None
         response_obj = None
         if path_obj.get("get") is not None:

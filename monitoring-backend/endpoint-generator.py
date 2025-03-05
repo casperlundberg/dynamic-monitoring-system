@@ -1,22 +1,31 @@
-# takes an Openapi schema and generates an endpoint that handles each root level data obj (http body)
-# as the data that can be requested, as an array of such objects. This means that for every type of http body,
-# one can request a time-series data representation of it.
+# Description: This file contains the
+# code for generating the endpoint from
+# the paths obj. The generated endpoint should
+# be python code that can be used to create
+# the endpoint in the monitoring-backend.
+import helper_functions as hf
 
-class EndpointGenerator:
-    def __init__(self):
-        pass
+# @param path_obj: Eg "/pet": {...}
+# @param path: Eg "/pet"
+def generate_endpoint(path_obj, path):
+    paths = hf.load_paths()
+    path_id = hf.get_new_id(paths, path)
 
-    def parse_paths_obj(self, paths_obj):
-        endpoints = []
-        for path in paths_obj:
-            endpoint = Endpoint(path)
-            endpoints.append(endpoint)
+    methods = list(path_obj.keys())
 
+    function_name = path.replace("/", "").replace("{", "").replace("}", "").replace("-", "_")
+    function_name = f"{function_name}_{path_id}"
 
-class Endpoint:
-    def __init__(self, path):
-        self.path = path
-        self.query_params
+    path = f"{path}_{path_id}"
 
-    def
+    paths = hf.prep_paths_for_save(paths, path, path_id)
+    hf.save_paths(paths)
 
+    endpoint = f"""
+    @app.route('{path}', methods={methods})
+    def {function_name}():
+    
+        response = get_response('{path}')
+        return response
+    """
+    print(endpoint)
