@@ -28,7 +28,7 @@ from monitoring_backend.helper_functions import get_response
 {endpoint_blueprint} = Blueprint('{endpoint_blueprint}', __name__)
 
 @{endpoint_blueprint}.route('{endpoint_path}', methods=['GET'])
-def {f_name}():
+def handle_{f_name}():
     response_data = get_response('{endpoint_path}')
     return Response(response_data, content_type='application/json')
 """
