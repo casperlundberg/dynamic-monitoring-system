@@ -1,0 +1,19 @@
+{
+  "GET /pets": [],
+  "POST /pets": {
+    "id": 3,
+    "name": "Buddy",
+    "type": "Dog"
+  },
+  "GET /pets/{pet_id}": {
+    "id": 1,
+    "name": "Fido",
+    "type": "Dog"
+  },
+  "PUT /pets/{pet_id}": {
+    "id": 1,
+    "name": "Fido",
+    "type": "Dog"
+  },
+  "DELETE /pets/{pet_id}": null
+}
