@@ -1,0 +1,95 @@
+openapi: 3.0.0
+info:
+  title: IoT Monitoring API
+  description: API for IoT device data (simulated sensors & meters)
+  version: 1.0.0
+
+paths:
+  /temperature:
+    get:
+      summary: Get latest temperature reading
+      operationId: get_temperature
+      responses:
+        "200":
+          description: Temperature data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemperatureReading"
+    post:
+      summary: Submit new temperature reading
+      operationId: post_temperature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TemperatureReading"
+      responses:
+        "200":
+          description: Temperature data received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemperatureReading"
+
+  /energy:
+    get:
+      summary: Get latest energy meter reading
+      operationId: get_energy
+      responses:
+        "200":
+          description: Energy meter data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnergyReading"
+    post:
+      summary: Submit new energy meter reading
+      operationId: post_energy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnergyReading"
+      responses:
+        "200":
+          description: Energy data received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnergyReading"
+
+components:
+  schemas:
+    TemperatureReading:
+      type: object
+      properties:
+        device_id:
+          type: string
+          example: "sensor-123"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-03-19T12:00:00Z"
+        temperature_celsius:
+          type: number
+          example: 22.5
+
+    EnergyReading:
+      type: object
+      properties:
+        device_id:
+          type: string
+          example: "meter-456"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-03-19T12:00:00Z"
+        power_kw:
+          type: number
+          example: 1.2
+        energy_kwh:
+          type: number
+          example: 500.5

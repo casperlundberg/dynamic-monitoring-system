@@ -1,42 +1,65 @@
-import json
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
+import datetime
 
-from flask import Flask, request, jsonify
+from instrumentor.main import instrument
 
-app = Flask(__name__)
-
-
-@app.route('/pets', methods=['GET'])
-def get_pets():
-    pets = [
-        {"id": 1, "name": "Fido", "type": "Dog"},
-        {"id": 2, "name": "Whiskers", "type": "Cat"}
-    ]
-    return jsonify(pets)
+app = FastAPI()
 
 
-@app.route('/pets', methods=['POST'])
-def add_pet():
-    new_pet = request.json
-    return jsonify(new_pet), 201
+# Dummy Instrumentation Middleware
+@app.middleware("http")
+async def instrumentation_middleware(request: Request, call_next):
+    body = await request.json() if request.method in ["POST", "PUT"] else None
+    instrument(request.method, request.url.path, request.headers,
+               body)  # Placeholder function
+    response = await call_next(request)
+    return response
 
 
-@app.route('/pets/<int:pet_id>', methods=['GET'])
-def get_pet(pet_id):
-    pet = {"id": pet_id, "name": "Fido", "type": "Dog"}
-    return jsonify(pet)
+# IoT Sensor Data Models
+class TemperatureReading(BaseModel):
+    device_id: str
+    timestamp: datetime.datetime
+    temperature_celsius: float
 
 
-@app.route('/pets/<int:pet_id>', methods=['PUT'])
-def update_pet(pet_id):
-    updated_pet = request.json
-    updated_pet["id"] = pet_id
-    return jsonify(updated_pet)
+class EnergyReading(BaseModel):
+    device_id: str
+    timestamp: datetime.datetime
+    power_kw: float
+    energy_kwh: float
 
 
-@app.route('/pets/<int:pet_id>', methods=['DELETE'])
-def delete_pet(pet_id):
-    return '', 204
+# IoT API Endpoints
+@app.get("/temperature", response_model=TemperatureReading)
+async def get_temperature():
+    """ Simulated temperature sensor data """
+    return {
+        "device_id": "sensor-123",
+        "timestamp": datetime.datetime.utcnow(),
+        "temperature_celsius": 22.5
+    }
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.post("/temperature", response_model=TemperatureReading)
+async def post_temperature(data: TemperatureReading):
+    """ Simulated sensor sending temperature data """
+    return data
+
+
+@app.get("/energy", response_model=EnergyReading)
+async def get_energy():
+    """ Simulated energy meter data """
+    return {
+        "device_id": "meter-456",
+        "timestamp": datetime.datetime.now(),
+        "power_kw": 1.2,
+        "energy_kwh": 500.5
+    }
+
+
+@app.post("/energy", response_model=EnergyReading)
+async def post_energy(data: EnergyReading):
+    """ Simulated meter sending energy usage data """
+    return data

@@ -17,11 +17,12 @@ def endpoint_generator(spec: Dict[str, Any]) -> None:
             f_name = hf.create_identifier(spec, path, method)
             generate_endpoint(f_name)
 
+
 def generate_endpoint(f_name: str) -> None:
-    endpoint_path = f"/{f_name.replace('_','/')}"
+    endpoint_path = f"/{f_name.replace('_', '/')}"
     endpoint_blueprint = f'blueprint_{f_name}'
 
-######################
+    ######################
     endpoint = f"""from flask import Blueprint, Response, stream_with_context
 from monitoring_backend.helper_functions import get_response
 
@@ -32,9 +33,10 @@ def handle_{f_name}():
     response_data = get_response('{endpoint_path}')
     return Response(response_data, content_type='application/json')
 """
-######################
+    ######################
 
     deploy_endpoint(endpoint, f_name)
+
 
 def deploy_endpoint(endpoint: str, filename: str) -> None:
     target_folder = "generated_endpoints"
@@ -46,10 +48,8 @@ def deploy_endpoint(endpoint: str, filename: str) -> None:
         f.write(endpoint)
 
 
-with open('../dummy_api/dummy_api_spec.json', 'r') as file:
+with open('../dummy_api/dummy_api_spec.yaml', 'r') as file:
     test_spec = json.load(file)
-
-
 
 # dereference json
 dereferenced_spec = jsonref.replace_refs(test_spec)
