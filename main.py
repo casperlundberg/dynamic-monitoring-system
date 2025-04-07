@@ -2,7 +2,7 @@ import threading
 import uvicorn
 from fastapi import FastAPI
 from api.routers.update import router
-from msys.core.ui import RootApp
+from UI_dashboard.core.ui import RootApp
 
 api = FastAPI()
 api.include_router(router, prefix="/update", tags=["update"])

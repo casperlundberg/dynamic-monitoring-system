@@ -3,7 +3,7 @@ import os
 ROOT_DIR = os.path.dirname(
     os.path.abspath(__file__))  # This is your Project Root
 
-MSYS_FOLDER = "msys"
+UI = "UI_dashboard"
 
 GENERATED_CODE_FOLDER = "generated_code"
 GENERATED_CODE_CLIENT_FOLDER = "clients"
