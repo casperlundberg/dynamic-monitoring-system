@@ -138,3 +138,5 @@ GitHub.sublime-settings
 .history
 #/UI_dashboard/generated_code/
 /docs/
+
+*.env

@@ -19,6 +19,9 @@ CODE_GENERATION_FORMATTER = "PEP8"  # NOT IN USE
 
 LEFT_PANEL_WIDTH = 500
 
-MS_SERVER_PORT = 5005
-SERVER_UPDATE_ENDPOINT_PORT = 5000
-UI_PORT = 5001
+SERVER_UPDATE_ENDPOINT_PORT = 8000  # FastAPI for SQL+endpoint
+MS_SERVER_PORT = 8001  # Flask backend
+UI_PORT = 8002  # Monitoring UI
+
+PG_HOST = "localhost"
+PG_CONNECTION = "postgresql+psycopg2://postgres:password@localhost:5432/postgres"
