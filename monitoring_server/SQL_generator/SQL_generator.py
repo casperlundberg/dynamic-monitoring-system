@@ -5,7 +5,7 @@ import uvicorn
 
 from typing import Dict, Any
 
-import deifinitions
+import definitions
 from packages.recieve_spec_package.update import OpenAPIHandlerAPI
 from packages.identifier.identfier import create_identifier
 
@@ -42,11 +42,23 @@ def flatten_properties(properties: Dict[str, Any], parent: str = ""):
 
 
 def generate_create_table(table_name: str, schema: Dict[str, Any]) -> str:
-    columns = [("timestamp", "TIMESTAMPTZ NOT NULL")]
+    base_columns = [("timestamp", "TIMESTAMPTZ NOT NULL")]
     properties = schema.get("properties", {})
-    columns += flatten_properties(properties)
-    col_sql = ",\n    ".join(f"{col} {typ}" for col, typ in columns)
-    return f"CREATE TABLE IF NOT EXISTS {table_name.lower()} (\n    {col_sql}\n);"
+
+    # Flatten and combine all columns
+    all_columns = base_columns + flatten_properties(properties)
+
+    # Remove duplicates based on column name, preserving first occurrence
+    seen = set()
+    unique_columns = []
+    for name, typ in all_columns:
+        if name not in seen:
+            unique_columns.append((name, typ))
+            seen.add(name)
+
+    col_sql = ",\n    ".join(f"{col} {typ}" for col, typ in unique_columns)
+    query = f"CREATE TABLE IF NOT EXISTS {table_name.lower()} (\n    {col_sql}\n);"
+    return query
 
 
 def table_exists(conn, table_name: str) -> bool:
@@ -71,27 +83,29 @@ def create_table_and_hypertable(conn, table_name: str, schema: Dict[str, Any]):
         conn.commit()
 
         print(f"Creating hypertable for: {table_name}")
-        cur.execute(f"""
+        query = f"""
             SELECT create_hypertable(
                 '{table_name.lower()}',
                 'timestamp',
                 create_default_indexes => TRUE
             );
-        """)
+        """
+
+        cur.execute(query)
+
         conn.commit()
 
 
 def generate_sql(spec: Dict[str, Any]):
-    schemas = spec.get("components", {}).get("schemas", {})
     paths = spec.get("paths", {})
 
-    if not schemas or not paths:
-        print("No schemas or paths found in OpenAPI spec.")
-        return
+    # if not schemas or not paths:
+    #     print("No schemas or paths found in OpenAPI spec.")
+    #     return
 
-    conn_str = os.getenv("PG_CONN_STRING")
+    conn_str = os.getenv("PG_CONNECTION")
     if not conn_str:
-        print("Environment variable PG_CONN_STRING is not set.")
+        print("Environment variable PG_CONNECTION is not set.")
         return
 
     conn = psycopg2.connect(conn_str)
@@ -111,6 +125,7 @@ def generate_sql(spec: Dict[str, Any]):
                 continue
 
             identifier = create_identifier(spec, path, method)
+
             create_table_and_hypertable(conn, identifier, schema)
 
     conn.close()

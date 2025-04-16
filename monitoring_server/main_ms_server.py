@@ -1,14 +1,17 @@
 # dual_server.py
 
 import asyncio
+import json
 import threading
 import uvicorn
+from kafka import KafkaConsumer
 
-import deifinitions
-from monitoring_server.Endpoint_generator.dynamic_flask_app import create_app
-from monitoring_server.Endpoint_generator.endpoint_generator import \
+import definitions
+from monitoring_server.endpoint_generator.dynamic_flask_app import create_app
+from monitoring_server.endpoint_generator.endpoint_generator import \
     endpoint_generator
 from monitoring_server.SQL_generator.SQL_generator import generate_sql
+from monitoring_server.inserter import insert_into_timescaledb
 from packages.recieve_spec_package.update import OpenAPIHandlerAPI
 
 openapi_handler = OpenAPIHandlerAPI()
@@ -17,13 +20,25 @@ openapi_handler = OpenAPIHandlerAPI()
 async def consume_spec():
     while True:
         spec = await openapi_handler.wait_for_spec()
-        generate_sql(spec)
-        endpoint_generator(spec)
+        print("[consume_spec] Received new spec.")
+
+        try:
+            print("[consume_spec] Calling generate_sql()...")
+            generate_sql(spec)
+            print("[consume_spec] SQL generation done.")
+        except Exception as e:
+            print(f"[consume_spec] Error in generate_sql: {e}")
+
+        try:
+            print("[consume_spec] Calling endpoint_generator()...")
+            endpoint_generator(spec)
+            print("[consume_spec] Endpoint generation done.")
+        except Exception as e:
+            print(f"[consume_spec] Error in endpoint_generator: {e}")
 
 
 def start_flask_server():
-    flask_app = create_app()
-    flask_app.run(host='0.0.0.0', port=deifinitions.MS_SERVER_PORT)
+    create_app()
 
 
 def start_fastapi_server():
@@ -32,9 +47,23 @@ def start_fastapi_server():
     asyncio.set_event_loop(loop)
     loop.create_task(consume_spec())
     config = uvicorn.Config(openapi_handler.app, host="0.0.0.0",
-                            port=deifinitions.SERVER_UPDATE_ENDPOINT_PORT)
+                            port=definitions.SERVER_UPDATE_ENDPOINT_PORT)
     server = uvicorn.Server(config)
     loop.run_until_complete(server.serve())
+
+
+def start_kafka_consumer():
+    consumer = KafkaConsumer(
+        "event-metrics",
+        bootstrap_servers="localhost:9092",
+        group_id="backend-group",
+        auto_offset_reset="earliest",
+        value_deserializer=lambda x: json.loads(x.decode("utf-8"))
+    )
+
+    for message in consumer:
+        data = message.value
+        insert_into_timescaledb(data)
 
 
 def run_monitoring_backend():
@@ -47,3 +76,6 @@ def run_monitoring_backend():
     # Start FastAPI in background thread with its own asyncio loop
     fastapi_thread = threading.Thread(target=start_fastapi_server, daemon=True)
     fastapi_thread.start()
+
+    kafka_thread = threading.Thread(target=start_kafka_consumer, daemon=True)
+    kafka_thread.start()

@@ -1,26 +1,19 @@
-import hashlib
 import json
-from typing import Dict, Any
-import instrumentor_config
-import utils
 
+from kafka import KafkaProducer
+
+from instrumentor import instrumentor_config
+from instrumentor import utils
 from packages.identifier.identfier import create_identifier
-
-# def instrument(method, path, timestamp, body):
-#     """ Placeholder for future instrumentation logic (e.g., Kafka integration) """
-#     # use hash to create identifier, load spec beforehand
-#
-#     ident = create_identifier({}, path, method)
-#
-#     print(f"Instrumenting: {method} {path} - Body: {body}")
-
 from datetime import datetime
 from email.utils import parsedate_to_datetime
+
+from packages.recieve_spec_package import deref_clean
 
 
 async def instrument(request):
     try:
-        payload = await request.json()
+        body = await request.json()
     except Exception:
         raise ValueError("Invalid JSON in request body")
 
@@ -38,10 +31,27 @@ async def instrument(request):
     headers = dict(request.headers)
 
     # Use the identifier logic to create a unique identifier for this request
-    spec = utils.get_spec_from_folder(config.PATH_TO_OPENAPI_SPEC)
-    ident = create_identifier(spec, path, method)
+    spec = utils.get_spec_from_file(instrumentor_config.PATH_TO_OPENAPI_SPEC)
+    cleaned_spec = deref_clean.clean_dereference(spec)
+
+    ident = create_identifier(cleaned_spec, path, method)
 
     # send ident and payload to kafka
     # Placeholder for Kafka integration
     # send_to_kafka(ident, payload)
-    print(f"Instrumenting: {method} {path} - Body: {payload}")
+    message = {
+        "identifier": ident,
+        "body": body,
+        "timestamp": timestamp.isoformat()
+    }
+
+    producer = KafkaProducer(
+        bootstrap_servers='localhost:9092',
+        value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    )
+
+    topic = "event-metrics"
+
+    producer.send(topic, message)
+    producer.flush()
+    print(f"Sent message to '{topic}':", message)

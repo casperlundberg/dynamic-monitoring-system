@@ -4,6 +4,8 @@ import time
 from flask import Flask, jsonify
 from threading import Thread
 
+import definitions
+
 loaded_blueprints = set()
 blueprint_mod_times = {}
 endpoint_handlers = {}
@@ -80,10 +82,9 @@ def create_app():
             return handler()
         return jsonify({"error": "Endpoint not found"}), 404
 
-    return app
-
+    app.run(host='0.0.0.0', port=definitions.MS_SERVER_PORT)
 
 # Only run directly for debugging
-if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True)
+# if __name__ == '__main__':
+#     app = create_app()
+#     app.run(debug=True)

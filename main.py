@@ -3,6 +3,10 @@
 from monitoring_server.main_ms_server import run_monitoring_backend
 from UI_dashboard.main_ui_server import start_ui_in_background
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 if __name__ == "__main__":
     run_monitoring_backend()
     start_ui_in_background()

@@ -3,7 +3,7 @@
 import asyncio
 import threading
 import uvicorn
-import deifinitions
+import definitions
 
 from packages.recieve_spec_package.update import OpenAPIHandlerAPI
 from UI_dashboard.monitoringUI import MonitoringUI  # adjust if path differs
@@ -21,7 +21,7 @@ def start_ui_server():
     loop.create_task(ui.listen_for_specs())
 
     config = uvicorn.Config(ui_handler.app, host="0.0.0.0",
-                            port=deifinitions.UI_PORT)
+                            port=definitions.UI_PORT)
     server = uvicorn.Server(config)
 
     # Run Uvicorn inside this loop

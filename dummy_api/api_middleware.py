@@ -1,27 +1,37 @@
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
 import datetime
 
-from fastapi import FastAPI, Request
-from dummy_api.models import EnergyReading, TemperatureReading
-from instrumentor.fastAPI import instrument
+from dummy_api.models import TemperatureReading, EnergyReading
+from instrumentor.fastAPI_instrumentation import instrument
 
 app = FastAPI()
 
 
+# Dummy Instrumentation Middleware
+@app.middleware("http")
+async def instrumentation_middleware(request: Request, call_next):
+    # body = await request.json() if request.method in ["POST", "PUT"] else None
+    await instrument(request)  # Placeholder function
+    response = await call_next(request)
+    return response
+
+
+# IoT API Endpoints
 @app.get("/temperature", response_model=TemperatureReading)
 async def get_temperature():
     """ Simulated temperature sensor data """
     return {
         "device_id": "sensor-123",
-        "timestamp": datetime.datetime.now(),
+        "timestamp": datetime.datetime.utcnow(),
         "temperature_celsius": 22.5
     }
 
 
 @app.post("/temperature", response_model=TemperatureReading)
-async def post_temperature(request: Request):
+async def post_temperature(data: TemperatureReading):
     """ Simulated sensor sending temperature data """
-    await instrument(request)
-    return await request.json()
+    return data
 
 
 @app.get("/energy", response_model=EnergyReading)
@@ -36,7 +46,6 @@ async def get_energy():
 
 
 @app.post("/energy", response_model=EnergyReading)
-async def post_energy(request: Request):
+async def post_energy(data: EnergyReading):
     """ Simulated meter sending energy usage data """
-    await instrument(request)
-    return await request.json()
+    return data

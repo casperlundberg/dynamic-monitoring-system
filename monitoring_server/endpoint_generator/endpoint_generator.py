@@ -1,7 +1,4 @@
-import json
 import os
-
-import jsonref
 
 from typing import Dict, Any
 
@@ -25,7 +22,7 @@ def generate_endpoint(f_name: str) -> None:
 
     ######################
     endpoint = f"""from flask import Blueprint, Response, stream_with_context
-from monitoring_backend.helper_functions import get_response
+from monitoring_server.helper_functions import get_response
 
 {endpoint_blueprint} = Blueprint('{endpoint_blueprint}', __name__)
 
@@ -40,19 +37,13 @@ def handle_{f_name}():
 
 
 def deploy_endpoint(endpoint: str, filename: str) -> None:
-    target_folder = "generated_endpoints"
-    target_filename = os.path.join(target_folder, f"{filename}.py")
+    target_folder = os.path.join(os.path.dirname(__file__),
+                                 '../generated_endpoints')
+    abs_folder = os.path.abspath(target_folder)
+    print(f"[endpoint_generator] Writing to: {abs_folder}")  # 👈 NEW
 
+    target_filename = os.path.join(target_folder, f"{filename}.py")
     os.makedirs(target_folder, exist_ok=True)
 
     with open(target_filename, 'w') as f:
         f.write(endpoint)
-
-# with open('../../dummy_api/dummy_api_spec.yaml', 'r') as file:
-#     test_spec = json.load(file)
-#
-# # dereference json
-# dereferenced_spec = jsonref.replace_refs(test_spec)
-#
-# # Run the endpoint generator
-# endpoint_generator(test_spec)
