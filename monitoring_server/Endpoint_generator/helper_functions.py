@@ -7,6 +7,8 @@ from typing import Dict, Any, Generator
 
 import jsonref
 
+from packages.identifier.identfier import generate_hash
+
 
 def enum_tester(enums, inp):
     for enum in enums:

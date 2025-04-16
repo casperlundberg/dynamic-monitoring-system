@@ -1,7 +1,13 @@
+import asyncio
 import os
-import json
-import yaml
-import sys
+import psycopg2
+import uvicorn
+
+from typing import Dict, Any
+
+import deifinitions
+from packages.recieve_spec_package.update import OpenAPIHandlerAPI
+from packages.identifier import create_identifier
 
 # Maps OpenAPI types + format to PostgreSQL types
 OPENAPI_TO_PG = {
@@ -13,16 +19,16 @@ OPENAPI_TO_PG = {
     ("integer", "int64"): "BIGINT",
     ("boolean", None): "BOOLEAN",
     ("object", None): "JSONB",
-    ("array", None): "JSONB",  # Could be separate table in advanced version
+    ("array", None): "JSONB",
 }
 
 
-def map_type(oatype, fmt):
+def map_type(oatype: str, fmt: str) -> str:
     return OPENAPI_TO_PG.get((oatype, fmt)) or OPENAPI_TO_PG.get(
         (oatype, None)) or "TEXT"
 
 
-def flatten_properties(properties, parent=""):
+def flatten_properties(properties: Dict[str, Any], parent: str = ""):
     fields = []
     for name, prop in properties.items():
         full_name = f"{parent}_{name}" if parent else name
@@ -35,39 +41,76 @@ def flatten_properties(properties, parent=""):
     return fields
 
 
-def generate_create_table(schema_name, schema):
-    columns = [("timestamp", "TIMESTAMPTZ NOT NULL")]  # Default column
+def generate_create_table(table_name: str, schema: Dict[str, Any]) -> str:
+    columns = [("timestamp", "TIMESTAMPTZ NOT NULL")]
     properties = schema.get("properties", {})
     columns += flatten_properties(properties)
     col_sql = ",\n    ".join(f"{col} {typ}" for col, typ in columns)
-    return f"CREATE TABLE IF NOT EXISTS {schema_name.lower()} (\n    {col_sql}\n);"
+    return f"CREATE TABLE IF NOT EXISTS {table_name.lower()} (\n    {col_sql}\n);"
 
 
-def load_openapi_file(path):
-    with open(path) as f:
-        if path.endswith(".yaml") or path.endswith(".yml"):
-            return yaml.safe_load(f)
-        elif path.endswith(".json"):
-            return json.load(f)
-        else:
-            raise ValueError("Unsupported file type. Use .yaml or .json")
+def table_exists(conn, table_name: str) -> bool:
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = %s
+            );
+        """, (table_name.lower(),))
+        return cur.fetchone()[0]
 
 
-def main(filepath):
-    print(f"\n📦 Parsing OpenAPI file: {filepath}\n")
-    data = load_openapi_file(filepath)
-    schemas = data.get("components", {}).get("schemas", {})
-    if not schemas:
-        print("⚠️ No schemas found in components.schemas.")
+def create_table_and_hypertable(conn, table_name: str, schema: Dict[str, Any]):
+    if table_exists(conn, table_name):
+        print(f"Table {table_name} already exists, skipping.")
         return
 
-    for name, schema in schemas.items():
-        sql = generate_create_table(name, schema)
-        print(f"🧱 SQL for `{name}`:\n{sql}\n")
+    with conn.cursor() as cur:
+        print(f"Creating table: {table_name}")
+        cur.execute(generate_create_table(table_name, schema))
+        conn.commit()
+
+        print(f"Creating hypertable for: {table_name}")
+        cur.execute(f"""
+            SELECT create_hypertable(
+                '{table_name.lower()}',
+                'timestamp',
+                create_default_indexes => TRUE
+            );
+        """)
+        conn.commit()
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python openapi_to_sql_flat.py path/to/openapi.yaml")
-    else:
-        main(sys.argv[1])
+def generate_sql(spec: Dict[str, Any]):
+    schemas = spec.get("components", {}).get("schemas", {})
+    paths = spec.get("paths", {})
+
+    if not schemas or not paths:
+        print("No schemas or paths found in OpenAPI spec.")
+        return
+
+    conn_str = os.getenv("PG_CONN_STRING")
+    if not conn_str:
+        print("Environment variable PG_CONN_STRING is not set.")
+        return
+
+    conn = psycopg2.connect(conn_str)
+
+    for path, methods in paths.items():
+        for method, operation in methods.items():
+            request_body = operation.get("requestBody", {})
+            content = request_body.get("content", {})
+            json_body = content.get("application/json", {})
+            schema = json_body.get("schema")
+
+            if not schema:
+                continue
+
+            # Handle dereferenced spec — schema should be the actual object
+            if not isinstance(schema, dict) or "properties" not in schema:
+                continue
+
+            identifier = create_identifier(spec, path, method)
+            create_table_and_hypertable(conn, identifier, schema)
+
+    conn.close()

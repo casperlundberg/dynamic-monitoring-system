@@ -1,30 +1,33 @@
-import jsonref
+import asyncio
 from fastapi import FastAPI, APIRouter
 from typing import Optional, Dict, Any
 
 
-class OpenAPIHandlerAPI(FastAPI):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.router = APIRouter()
-        self._spec: Optional[
-            Dict[str, Any]] = None  # Store the dereferenced spec
-        self.setup_routes()
+class OpenAPIHandlerAPI:
+    def __init__(self):
+        self._spec: Optional[Dict[str, Any]] = None
+        self._spec_queue: asyncio.Queue = asyncio.Queue()
+        self.app = FastAPI()
+        self._setup_routes()
 
-    def setup_routes(self):
-        @self.router.put("/")
+    def _setup_routes(self):
+        router = APIRouter()
+
+        @router.put("/")
         async def put_update(spec: Dict[str, Any]):
-            # deref_spec = jsonref.JsonRef.replace_refs(spec)
-            deref_spec = spec
-
-            if deref_spec is None:
+            if not spec:
                 return {"message": "Spec is empty"}
 
-            self._spec = deref_spec
+            self._spec = spec
+            await self._spec_queue.put(spec)
             return {"message": "Spec received and stored"}
 
-        self.include_router(self.router)
+        self.app.include_router(router)
 
     def get_spec(self) -> Optional[Dict[str, Any]]:
         """Returns the most recently stored OpenAPI spec (dereferenced)."""
         return self._spec
+
+    async def wait_for_spec(self) -> Dict[str, Any]:
+        """Asynchronously waits for the next incoming OpenAPI spec."""
+        return await self._spec_queue.get()
