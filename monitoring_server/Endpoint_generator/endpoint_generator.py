@@ -48,12 +48,11 @@ def deploy_endpoint(endpoint: str, filename: str) -> None:
     with open(target_filename, 'w') as f:
         f.write(endpoint)
 
-
-with open('../../dummy_api/dummy_api_spec.yaml', 'r') as file:
-    test_spec = json.load(file)
-
-# dereference json
-dereferenced_spec = jsonref.replace_refs(test_spec)
-
-# Run the endpoint generator
-endpoint_generator(test_spec)
+# with open('../../dummy_api/dummy_api_spec.yaml', 'r') as file:
+#     test_spec = json.load(file)
+#
+# # dereference json
+# dereferenced_spec = jsonref.replace_refs(test_spec)
+#
+# # Run the endpoint generator
+# endpoint_generator(test_spec)

@@ -28,11 +28,11 @@ class MonitoringUI:
         self.app = openapi_handler.app
         self.templates = Jinja2Templates(directory="templates")
         self.specs: Dict[
-            str, Dict[str, Any]] = {}  # identifier -> schema + y_key
+            str, Dict[str, Any]] = {}
         self.setup_ui_routes()
 
         # Start async background task
-        asyncio.create_task(self.listen_for_specs())
+        # asyncio.create_task(self.listen_for_specs())
 
     def setup_ui_routes(self):
         @self.app.get("/panels/{identifier}", response_class=HTMLResponse)

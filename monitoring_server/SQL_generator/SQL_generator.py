@@ -7,7 +7,7 @@ from typing import Dict, Any
 
 import deifinitions
 from packages.recieve_spec_package.update import OpenAPIHandlerAPI
-from packages.identifier import create_identifier
+from packages.identifier.identfier import create_identifier
 
 # Maps OpenAPI types + format to PostgreSQL types
 OPENAPI_TO_PG = {

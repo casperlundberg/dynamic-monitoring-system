@@ -1,33 +1,19 @@
-import threading
-import uvicorn
-from fastapi import FastAPI
-from api.routers.update import router
-from UI_dashboard.core.ui import RootApp
+# main.py
 
-api = FastAPI()
-api.include_router(router, prefix="/update", tags=["update"])
-
-
-@api.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-
-def run_fastapi():
-    uvicorn.run(api, host="127.0.0.1", port=8000)
-
-
-def run_tkinter():
-    ui = RootApp()
-    ui.mainloop()
-
+from monitoring_server.main_ms_server import run_monitoring_backend
+from UI_dashboard.main_ui_server import start_ui_in_background
 
 if __name__ == "__main__":
-    fastapi_thread = threading.Thread(target=run_fastapi)
-    tkinter_thread = threading.Thread(target=run_tkinter)
+    run_monitoring_backend()
+    start_ui_in_background()
 
-    fastapi_thread.start()
-    tkinter_thread.start()
+    print(
+        "[Main] SQL/Endpoint server + Flask + UI server are running in background.")
 
-    fastapi_thread.join()
-    tkinter_thread.join()
+    try:
+        while True:
+            cmd = input(">> ")
+            if cmd.strip() == "exit":
+                break
+    except KeyboardInterrupt:
+        print("Shutdown requested.")
