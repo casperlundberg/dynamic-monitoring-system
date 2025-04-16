@@ -11,23 +11,15 @@ def get_response(identifier: str):
     try:
         conn = db.connect()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute(f'SELECT * FROM "{identifier}"')
-
-        def generate():
-            for row in cur.fetchall():
-                yield json.dumps(row) + '\n'
-
-        return generate()
+        cur.execute(f'SELECT * FROM "{identifier}";')
+        rows = cur.fetchall()
+        return json.dumps(rows, default=str)
 
     except psycopg2.Error as e:
         print("[DB Error]", e)
         if conn:
             conn.rollback()
-
-        def error_stream():
-            yield json.dumps({"error": str(e)}) + '\n'
-
-        return error_stream()
+        return json.dumps({"error": str(e)})
 
     finally:
         if cur:
