@@ -2,10 +2,9 @@ import asyncio
 import threading
 
 import uvicorn
-from PIL._tkinter_finder import tk
 
 import definitions
-from UI_dashboard.monitoring_ui import MonitoringUI
+from UI_dashboard.ui import UI
 from UI_dashboard.queue import shared_queue, update_event
 from packages.recieve_spec_package.update import OpenAPIHandlerAPI
 
@@ -32,7 +31,7 @@ def start_fastapi_server():
 
 def start_ui():
     """Starts the UI in a separate thread."""
-    ui = MonitoringUI()
+    ui = UI()
     ui.mainloop()
 
 
