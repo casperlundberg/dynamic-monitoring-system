@@ -3,16 +3,29 @@ import psycopg2.extras
 from monitoring_server.db_singleton import db
 
 
-# Does this handle nested data? what about duplicated keys?
+def flatten_body(data: dict, parent_key: str = "", sep: str = "_") -> dict:
+    items = []
+    for k, v in data.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_body(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key.lower(), v))
+    return dict(items)
+
+
 def insert_into_timescaledb(message: dict):
     identifier = message["identifier"]
     timestamp = message["timestamp"]
     body = message["body"]
 
-    # Combine timestamp and body into one dictionary
+    # Flatten the body
+    flat_body = flatten_body(body)
+
+    # Combine timestamp and flattened body into one dictionary
     row_data = {
         "timestamp": timestamp,
-        **body
+        **flat_body
     }
 
     columns = list(row_data.keys())

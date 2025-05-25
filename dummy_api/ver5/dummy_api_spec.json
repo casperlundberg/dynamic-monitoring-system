@@ -1,0 +1,151 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "IoT Monitoring API",
+    "description": "API for IoT device data (simulated sensors & meters). Updated with better descriptions in v1.0.1.",
+    "version": "1.0.1"
+  },
+  "paths": {
+    "/temperature": {
+      "get": {
+        "summary": "Get the latest simulated temperature reading",
+        "operationId": "get_temperature",
+        "responses": {
+          "200": {
+            "description": "A successful response returning the latest temperature sensor data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemperatureReading"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit a new temperature reading to the system",
+        "operationId": "post_temperature",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemperatureReading"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Temperature data successfully received",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemperatureReading"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/energy": {
+      "get": {
+        "summary": "Get the latest simulated energy meter reading",
+        "operationId": "get_energy",
+        "responses": {
+          "200": {
+            "description": "A successful response returning the latest energy meter data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnergyReading"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit a new energy meter reading to the system",
+        "operationId": "post_energy",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnergyReading"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Energy data successfully received",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnergyReading"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TemperatureReading": {
+        "type": "object",
+        "description": "A temperature reading from a simulated IoT sensor.",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Unique identifier for the device.",
+            "example": "sensor-123"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the reading was captured.",
+            "example": "2025-03-19T12:00:00Z"
+          },
+          "temperature_celsius": {
+            "type": "number",
+            "description": "Temperature value in degrees Celsius.",
+            "example": 22.5
+          }
+        }
+      },
+      "EnergyReading": {
+        "type": "object",
+        "description": "An energy reading from a simulated meter.",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Unique identifier for the meter.",
+            "example": "meter-456"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time at which the energy reading was captured.",
+            "example": "2025-03-19T12:00:00Z"
+          },
+          "power_kw": {
+            "type": "number",
+            "description": "Current power usage in kilowatts (kW).",
+            "example": 1.2
+          },
+          "energy_kwh": {
+            "type": "number",
+            "description": "Cumulative energy usage in kilowatt-hours (kWh).",
+            "example": 500.5
+          }
+        }
+      }
+    }
+  }
+}

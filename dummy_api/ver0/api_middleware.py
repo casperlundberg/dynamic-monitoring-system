@@ -1,8 +1,7 @@
 from fastapi import FastAPI, Request
-from pydantic import BaseModel
 import datetime
 
-from dummy_api.models import TemperatureReading, EnergyReading
+from dummy_api.ver0.models import TemperatureReading, EnergyReading
 from instrumentor.fastAPI_instrumentation import instrument
 
 app = FastAPI()

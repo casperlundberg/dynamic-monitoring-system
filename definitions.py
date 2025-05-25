@@ -20,5 +20,7 @@ CODE_GENERATION_FORMATTER = "PEP8"  # NOT IN USE
 LEFT_PANEL_WIDTH = 500
 
 SERVER_UPDATE_ENDPOINT_PORT = 8000  # FastAPI Update spec server
-MS_SERVER_PORT = 8001  # Flask backend, generated endpoints
 UI_PORT = 8002  # Monitoring UI
+
+MS_SERVER_PORT = 8001  # Flask backend, generated endpoints
+MS_SERVER_HOST = "http://192.168.1.74"  # Flask backend, generated endpoints

@@ -1,6 +1,6 @@
 from typing import Dict, Any
 
-from monitoring_server.SQL_generator.SQL_generator import map_type
+from packages.flatten_prop_schema.utils import map_type
 
 
 def flatten_properties(properties: Dict[str, Any], parent: str = ""):

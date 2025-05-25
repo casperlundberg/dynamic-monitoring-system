@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 if __name__ == "__main__":
     from models import TemperatureReading, EnergyReading
 else:
-    from dummy_api.models import TemperatureReading, \
+    from dummy_api.ver1.models import TemperatureReading, \
         EnergyReading
 
 from instrumentor.fastAPI_instrumentation import instrument
@@ -19,7 +19,7 @@ async def get_temperature():
     return {
         "device_id": "sensor-123",
         "timestamp": datetime.datetime.now(),
-        "temperature_celsius": 22.5
+        "temp_c": 22.5
     }
 
 
@@ -51,5 +51,5 @@ async def post_energy(request: Request):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("dummy_api.api:app", host="0.0.0.0", port=8010,
+    uvicorn.run("dummy_api.ver1.api:app", host="0.0.0.0", port=8010,
                 reload=True)

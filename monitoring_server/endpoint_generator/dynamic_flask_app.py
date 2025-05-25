@@ -82,7 +82,7 @@ def create_app():
             return handler()
         return jsonify({"error": "Endpoint not found"}), 404
 
-    app.run(host='0.0.0.0', port=definitions.MS_SERVER_PORT)
+    app.run(host="0.0.0.0", port=definitions.MS_SERVER_PORT)
 
 # Only run directly for debugging
 # if __name__ == '__main__':

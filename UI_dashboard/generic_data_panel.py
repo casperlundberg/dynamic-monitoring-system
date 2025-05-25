@@ -9,7 +9,9 @@ import requests
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+import definitions
 from definitions import LEFT_PANEL_WIDTH
+from packages.flatten_prop_schema.flatten_prop import flatten_properties
 
 
 def create_text_with_scrollbar(parent, text_content, expand=True):
@@ -37,11 +39,15 @@ def identifier_to_url(identifier):
 
 
 class GenericDataPanel(tk.Frame):
-    def __init__(self, master, identifier):
+    def __init__(self, master, name, identifier, schema):
         super().__init__(master)
         self.text_boxes = {}  # Initialize self.text_boxes as an empty dictionary
-        self.name = identifier
-        self.body = None
+        self.name = name
+        self.url = definitions.MS_SERVER_HOST + ":" + str(
+            definitions.MS_SERVER_PORT) + identifier_to_url(
+            identifier)
+        print(f"[GenericDataPanel] URL: {self.url}")
+        self.schema = schema
 
         self.required_fields = []
         self.missing_fields = []
@@ -82,19 +88,7 @@ class GenericDataPanel(tk.Frame):
         # self.axis_controls_frame.grid_propagate(False)
 
         # Add widgets to axis_controls_frame
-        self.x_axis_var = tk.StringVar()
         self.y_axis_var = tk.StringVar()
-
-        tk.Label(self.axis_controls_frame, text="X-axis:").grid(row=0,
-                                                                column=0,
-                                                                padx=10,
-                                                                pady=5,
-                                                                sticky="e")
-        self.x_axis_dropdown = ttk.Combobox(self.axis_controls_frame,
-                                            textvariable=self.x_axis_var,
-                                            width=40)
-        self.x_axis_dropdown.grid(row=0, column=1, padx=10, pady=5,
-                                  sticky="w")
 
         tk.Label(self.axis_controls_frame, text="Y-axis:").grid(row=1,
                                                                 column=0,
@@ -130,219 +124,54 @@ class GenericDataPanel(tk.Frame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
-    def get_data(self):
-        """
-        Get the data from the API
-        """
-
-    def extract_fields(self, schema, components, parent_key='body'):
-        """
-        Recursively extract fields from the schema and components
-        """
-        fields = []
-
-        if 'properties' in schema:
-            print("schema['properties']:\n", json.dumps(schema['properties'],
-                                                        indent=4), "\n")
-
-            for key, value in schema['properties'].items():
-                full_key = f"{parent_key}.{key}" if parent_key else key
-                fields.append(full_key)
-                if 'type' in value and value['type'] in components['schemas']:
-                    ref_schema = components['schemas'][value['type']]
-                    fields.extend(
-                        self.extract_fields(ref_schema, components, full_key))
-                elif value.get('type') == 'array' and 'items' in value:
-                    if 'type' in value['items'] and value['items']['type'] in \
-                            components['schemas']:
-                        ref_schema = components['schemas'][
-                            value['items']['type']]
-                        fields.extend(
-                            self.extract_fields(ref_schema, components,
-                                                full_key))
-                    else:
-                        fields.extend(
-                            self.extract_fields(value['items'], components,
-                                                full_key))
-                else:
-                    fields.extend(
-                        self.extract_fields(value, components, full_key))
-        return fields
-
     def update_dropdowns(self):
         """
-        Update the X-axis and Y-axis dropdowns with suitable fields from the OpenAPI schema
+        Update the Y-axis dropdown with
         """
-        responses = self.http_obj.response_spec
-        metrics_keys = ["metrics.response_time_ms",
-                        "metrics.status_code",
-                        "metrics.content_type",
-                        "metrics.content_length", "timestamp"]
+        # flatten the schema from properties
+        properties = self.schema.get("properties", {})
+        variable_list = flatten_properties(properties)
 
-        if '200' in responses:
-            content = responses['200'].get('content', {})
-
-            if 'application/json' in content:
-                schema = content['application/json'].get('schema', {})
-            # elif 'application/xml' in content:
-            #     schema = content['application/xml'].get('schema', {})
-            else:
-                schema = {}
-
-            # get potential X and Y axis fields from the schema
-            components = self.http_obj.components_spec
-
-            if 'properties' not in schema:
-                prop_schema = {
-                    "properties": find_properties_in_schema(schema,
-                                                            components)}
-            else:
-                prop_schema = schema
-            fields = self.extract_fields(prop_schema, components)
-
-            print("fields: ", fields)
-
-            # Add the metrics keys to the fields
-            fields.extend(metrics_keys)
-
-            self.x_axis_dropdown['values'] = fields
-            self.y_axis_dropdown['values'] = fields
-
-            if self.http_obj.x_axis:
-                self.x_axis_var.set(self.http_obj.x_axis)
-            if self.http_obj.y_axis:
-                self.y_axis_var.set(self.http_obj.y_axis)
-
-        # all 2xx responses
-        elif any([str(code).startswith('2') for code in responses.keys()]):
-            self.x_axis_dropdown['values'] = metrics_keys
-            self.y_axis_dropdown['values'] = metrics_keys
-        else:
-            print("No 200 response found in response_spec")
-
-    def show_metrics(self):
-        """
-        Show the metrics for the response
-        """
-        if not self.body:
-            print("No data found in the response")
-            return
-
-        pretty_metrics = json.dumps(self.http_obj.metrics, indent=4)
-        create_text_with_scrollbar(self.metrics_frame, pretty_metrics,
-                                   expand=False)
+        # Add the variable list to the Y-axis dropdown
+        self.y_axis_dropdown['values'] = variable_list
 
     def generate_graph(self):
-        """
-        Generate a graph based on the selected X-axis and Y-axis data
-        """
-        # # Clear the metrics_frame before adding new widgets
-        # for widget in self.metrics_frame.winfo_children():
-        #     widget.destroy()
-
-        # Clear the canvas_frame before adding new widgets
-        # for widget in self.canvas_frame.winfo_children():
-        #     widget.destroy()
-
-        status_code = self.get_data()
-
-        if status_code == 404:
-            # pretty print
-            pretty_response = json.dumps(self.body, indent=4)
-            print("body:\n", pretty_response)
-            print("Status code 404: Not found")
-
-        if self.missing_fields:
-            # show pop-up with missing fields
-
-            self.missing_fields.clear()
+        response = requests.get(self.url)
+        if response.status_code != 200:
+            print(f"Error: {response.status_code}")
             return
 
-        if self.x_axis_var.get() == '' or self.y_axis_var.get() == '':
-            print("Please select both X-axis and Y-axis fields.")
+        data = response.json()
+        if not data or not isinstance(data, list):
+            print("No valid data to display")
             return
 
-        x_field = self.x_axis_var.get()
-        y_field = self.y_axis_var.get()
+        selected_y = self.y_axis_var.get().split(" ")[0]  # strip type info
+        filtered_data = [
+            item for item in data
+            if "timestamp" in item and selected_y in item
+        ]
 
-        x_key_is_in_array = is_key_array_or_nested_deeper({"body": self.body},
-                                                          x_field)
-        y_key_is_in_array = is_key_array_or_nested_deeper({"body": self.body},
-                                                          y_field)
+        # Sort by timestamp
+        filtered_data.sort(key=lambda item: item["timestamp"])
 
-        if not x_key_is_in_array and not y_key_is_in_array:
-            # The chosen fields are not in a list
-            # and therefore not suitable for plotting
-            history_data = self.http_obj.historical_data
-            x_data = find_history_data_by_key(history_data, x_field)
-            y_data = find_history_data_by_key(history_data, y_field)
-            print(f"x_data: {x_data}")
-            print(f"y_data: {y_data}")
-            if len(x_data) == 0 and len(y_data) == 0:  # if length is 0
-                pretty_response = json.dumps(self.body, indent=4)
-                create_text_with_scrollbar(self.canvas_frame, pretty_response)
+        # Convert timestamp to datetime and extract y-axis values
+        x_axis = [parse(item["timestamp"]) for item in filtered_data]
+        y_axis = [item[selected_y] for item in filtered_data]
 
-        else:
-            x_data = find_value_by_key({"body": self.body}, x_field)
-            y_data = find_value_by_key({"body": self.body}, y_field)
+        if not x_axis or not y_axis:
+            print("No matching data found for selected Y-axis.")
+            return
 
-        # if x_data is None or y_data is None:
-        #     print(f"Could not find data for fields: {x_field}, {y_field}")
-        #     print("Re-fetching data...")
-        #     self.get_data()
-        #
-        #     x_data = find_value_by_key(self.body, x_field)
-        #     y_data = find_value_by_key(self.body, y_field)
+        for widget in self.canvas_frame.winfo_children():
+            widget.destroy()
 
-        # check if axes are lists
-        ############################################################
-        # Should know from the schema if the data is a list or not!!
-        ############################################################
-        if not isinstance(x_data, list) or not isinstance(y_data, list):
-            pretty_response = json.dumps(self.body, indent=4)
-            create_text_with_scrollbar(self.canvas_frame, pretty_response)
-            print("Error: x_data and y_data must be lists.")
+        fig, ax = plt.subplots(figsize=(5, 3))
+        ax.plot(x_axis, y_axis)
+        ax.set_title(f"{self.name}")
+        ax.set_xlabel("Time")
+        ax.set_ylabel(selected_y)
 
-        else:
-            # Check if x_data or y_data are strings representing time and convert them
-            try:
-                x_data = [
-                    parse(item) if isinstance(item, str) else item
-                    for item in x_data]
-            except ValueError:
-                pretty_response = json.dumps(self.body, indent=4)
-                create_text_with_scrollbar(self.canvas_frame, pretty_response)
-                print(f"Error converting x_data to datetime: {x_data}")
-                return
-
-            try:
-                y_data = [
-                    parse(item) if isinstance(item, str) else item
-                    for item in y_data]
-            except ValueError:
-                pretty_response = json.dumps(self.body, indent=4)
-                create_text_with_scrollbar(self.canvas_frame, pretty_response)
-                print(f"Error converting y_data to datetime: {y_data}")
-                return
-
-            if len(x_data) != len(y_data):
-                print(
-                    f"Error: x_data and y_data must have the same length. x_data length: {len(x_data)}, y_data length: {len(y_data)}")
-                return
-
-            # Create a plot
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.plot(x_data, y_data, marker='o')
-            ax.set_xlabel(x_field)
-            ax.set_ylabel(y_field)
-            ax.set_title(f"{x_field} vs {y_field}")
-
-            for widget in self.canvas_frame.winfo_children():
-                widget.destroy()
-
-            canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
-            canvas.draw()
-            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-            self.http_obj.x_axis = x_field
-            self.http_obj.y_axis = y_field
+        canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)

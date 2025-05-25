@@ -4,29 +4,28 @@ from tkinter import ttk
 from UI_dashboard.generic_data_panel import GenericDataPanel
 from UI_dashboard.queue import update_event, shared_queue
 from packages.identifier.identfier import create_identifier
-from utils import serialize_save_file, deserialize_save_file
 
 
 class UI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.panel_var = tk.StringVar()
-        self.title("Root Application")
-        self.geometry("1920x1080+0+0")
-        self.state("zoomed")
+        self.title("Monitoring Dashboard")
+        self.geometry("720x480+0+0")
+        # self.state("zoomed")
 
         self.panels = {}
         self.panel_templates = {}
         self.save_file_name = "panel_data_obj_list"
         self.current_panel = None
 
-        save_button = tk.Button(self, text="Save session",
-                                command=self.save_data)
-        save_button.grid(row=0, column=2, padx=10, pady=10)
+        # save_button = tk.Button(self, text="Save session",
+        #                         command=self.save_data)
+        # save_button.grid(row=0, column=2, padx=10, pady=10)
 
-        self.crete_new_panel = tk.Button(self, text="Create panel",
-                                         command=self.create_panel_from_template)
-        self.crete_new_panel.grid(row=0, column=1, padx=10, pady=10)
+        # self.crete_new_panel = tk.Button(self, text="Create panel",
+        #                                  command=self.create_panel_from_template)
+        # self.crete_new_panel.grid(row=0, column=1, padx=10, pady=10)
 
         self.panel_dropdown = ttk.Combobox(self, textvariable=self.panel_var)
         self.panel_dropdown.grid(row=0, column=0, columnspan=1, padx=10,
@@ -39,7 +38,7 @@ class UI(tk.Tk):
         self.grid_columnconfigure(2, weight=1)
 
         # Load previous settings on start
-        self.load_data()
+        # self.load_data()
 
         # Start the loop that waits for updates from the generator
         self.check_for_updates()
@@ -49,6 +48,8 @@ class UI(tk.Tk):
             spec = shared_queue.get()  # Get the generator object from the queue
             self.update_panels(spec)
             update_event.clear()  # Clear the event
+
+            # print(f"[UI] Spec updated: {spec}")
 
         self.after(100,
                    self.check_for_updates)  # Check for updates every 100ms
@@ -60,14 +61,38 @@ class UI(tk.Tk):
             for method in path_obj.keys():
                 ident = create_identifier(spec, path, method)
                 if ident not in self.panels:
-                    # create a new panel
+                    # get schema for the current path
+                    method_prefix = ident.split("_", 1)[0].lower()
 
-                    self.panels[ident] = GenericDataPanel(self, ident)
-                    self.panels[ident].populate_ui_from_http_obj()
+                    print(
+                        f"[UI] Found new endpoint: {ident}, method: {method_prefix}")
+
+                    # Get schema using the actual method from path_obj
+                    operation_obj = path_obj.get(method_prefix)
+                    if not operation_obj:
+                        print(
+                            f"[UI] Skipping {ident}, method '{method_prefix}' not found in path")
+                        continue
+
+                    request_body = operation_obj.get("requestBody", {})
+                    schema = request_body.get("content", {}).get(
+                        "application/json", {}).get("schema")
+
+                    if not schema:
+                        print(f"[UI] No schema found for {ident}")
+                        continue
+
+                    self.panels[ident] = GenericDataPanel(self, ident, ident,
+                                                          schema)
+                    self.update_dropdown()
+
+                    self.panel_templates[ident] = ident
                     self.panels[ident].update_dropdowns()
 
     def update_dropdown(self):
         self.panel_dropdown['values'] = list(self.panels.keys())
+        # repaint the dropdown
+        self.panel_dropdown.update()
 
     def on_panel_selected(self, event):
         selected_panel = self.panel_var.get()
@@ -79,11 +104,6 @@ class UI(tk.Tk):
         self.current_panel = self.panels[panel_name]
         self.current_panel.grid(row=1, column=0, columnspan=3, padx=10,
                                 pady=10, sticky="nsew")
-
-        # get params before getting data
-        self.current_panel.set_params_from_ui()
-
-        # Show the "Get Data" button
 
     def create_panel_from_template(self):
         # create pop-up window with form to fill in
@@ -98,47 +118,19 @@ class UI(tk.Tk):
         drop_down_label.pack()
         drop_down = ttk.Combobox(top)
         drop_down.pack()
-        drop_down['values'] = list(self.panel_templates.keys())
+        drop_down['identifiers'] = list(self.panel_templates.keys())
+        name = name_entry.get()
+        identifier = drop_down.get()
+        schema = self.panels[identifier].schema.copy()
 
         button = tk.Button(top, text="Create",
                            command=lambda: self.template_to_panel(
-                               self.panel_templates[drop_down.get()]))
+                               name, identifier, schema))
         button.pack()
 
-    def template_to_panel(self, name, identifier):
+    def template_to_panel(self, name, identifier, schema):
         # Add a new panel to the list
+        # name is the name of the panel in the ui, identifier is used to get data from the correct endpoint
 
-        self.panels[name] = GenericDataPanel(self, identifier)
+        self.panels[name] = GenericDataPanel(self, name, identifier, schema)
         self.update_dropdown()
-
-    def save_data(self):
-        # Update the http_obj with the current values from the UI elements
-        for panel in self.panels.values():
-            panel.update_http_obj_from_ui()
-
-        # Update http_data_objs with the new http_objs from each panel
-        http_data_objs = {k: panel.http_obj for k, panel in
-                          self.panels.items()}
-
-        # Save http_data_objs to the file
-        serialize_save_file(http_data_objs, self.save_file_name)
-        print(f"Data saved to {self.save_file_name}: {http_data_objs}")
-
-        # Save unique_endpoints to the file
-        serialize_save_file(self.panel_templates, "unique_endpoints")
-
-    def load_data(self):
-        http_data_objs = deserialize_save_file(self.save_file_name)
-        if http_data_objs is None:
-            return
-        for k, v in http_data_objs.items():
-            self.panels[k] = GenericDataPanel(self, k, v)
-            self.panels[
-                k].populate_ui_from_http_obj()  # Populate UI with loaded data
-            self.panels[
-                k].update_dropdowns()  # Update dropdowns with loaded data
-        self.update_dropdown()
-        print(f"Data loaded from {self.save_file_name}")
-
-        # Load unique_endpoints from the file
-        self.panel_templates = deserialize_save_file("unique_endpoints")
