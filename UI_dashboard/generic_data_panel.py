@@ -41,88 +41,43 @@ def identifier_to_url(identifier):
 class GenericDataPanel(tk.Frame):
     def __init__(self, master, name, identifier, schema):
         super().__init__(master)
-        self.text_boxes = {}  # Initialize self.text_boxes as an empty dictionary
+        self.text_boxes = {}
         self.name = name
-        self.url = definitions.MS_SERVER_HOST + ":" + str(
-            definitions.MS_SERVER_PORT) + identifier_to_url(
-            identifier)
-        print(f"[GenericDataPanel] URL: {self.url}")
+        self.url = f"{definitions.MS_SERVER_HOST}:{definitions.MS_SERVER_PORT}{identifier_to_url(identifier)}"
         self.schema = schema
 
         self.required_fields = []
         self.missing_fields = []
 
         # Create frames for layout
-        self.left_frame = tk.Frame(self, width=LEFT_PANEL_WIDTH, height=1000)
-        self.left_frame.grid(row=0, column=0, padx=10, pady=10,
-                             sticky="nw")
-        self.left_frame.grid_propagate(False)
+        self.left_frame = tk.Frame(self, bg="lightgray", width=200)
+        self.left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        # Create a canvas with a vertical scrollbar for the parameters
-        # top-left
-        self.scroll_canvas = tk.Canvas(self.left_frame, width=LEFT_PANEL_WIDTH,
-                                       height=400)
-        self.scroll_canvas.grid(row=0, column=0, sticky="nsew")
-
-        self.scrollbar_y = tk.Scrollbar(self.left_frame,
-                                        orient="vertical",
-                                        command=self.scroll_canvas.yview)
-        self.scrollbar_y.grid(row=0, column=1, sticky="ns")
-
-        self.scroll_canvas.configure(yscrollcommand=self.scrollbar_y.set)
-
-        self.inner_frame = tk.Frame(self.scroll_canvas)
-        self.scroll_canvas.create_window((0, 0), window=self.inner_frame,
-                                         anchor="nw")
-
-        self.inner_frame.bind("<Configure>",
-                              lambda e: self.scroll_canvas.configure(
-                                  scrollregion=self.scroll_canvas.bbox(
-                                      "all")))
-
-        # mid-left with the axis dropdowns and create graph button
-        self.axis_controls_frame = tk.Frame(self.left_frame,
-                                            width=LEFT_PANEL_WIDTH)
-        self.axis_controls_frame.grid(row=1, column=0, columnspan=2,
-                                      padx=10, pady=10, sticky="nsew")
-        # self.axis_controls_frame.grid_propagate(False)
-
-        # Add widgets to axis_controls_frame
+        # Dropdown for Y-axis selection
         self.y_axis_var = tk.StringVar()
-
-        tk.Label(self.axis_controls_frame, text="Y-axis:").grid(row=1,
-                                                                column=0,
-                                                                padx=10,
-                                                                pady=5,
-                                                                sticky="e")
-        self.y_axis_dropdown = ttk.Combobox(self.axis_controls_frame,
+        tk.Label(self.left_frame, text="Y-axis:").grid(row=0, column=0,
+                                                       columnspan=2, padx=10,
+                                                       pady=5, sticky="w")
+        self.y_axis_dropdown = ttk.Combobox(self.left_frame,
                                             textvariable=self.y_axis_var,
-                                            width=40)
-        self.y_axis_dropdown.grid(row=1, column=1, padx=10, pady=5,
-                                  sticky="w")
+                                            width=50)  # Increased width
+        self.y_axis_dropdown.grid(row=1, column=0, columnspan=2, padx=10,
+                                  pady=5, sticky="w")
 
-        self.graph_button = tk.Button(self.axis_controls_frame,
-                                      text="Generate Graph",
+        # Button to generate the graph
+        self.graph_button = tk.Button(self.left_frame, text="Generate Graph",
                                       command=self.generate_graph)
         self.graph_button.grid(row=2, column=0, columnspan=2, pady=10)
 
-        # bottom-left with the response metrics
-        self.metrics_frame = tk.Frame(self.left_frame,
-                                      width=LEFT_PANEL_WIDTH)
-        self.metrics_frame.grid(row=2, column=0, columnspan=1, padx=10,
-                                pady=10, sticky="nsew")
-        self.metrics_frame.grid_propagate(False)
-
-        # right side: graph
-        self.canvas_frame = tk.Frame(self, width=1000, height=400)
+        # Right frame for canvas
+        self.canvas_frame = tk.Frame(self, bg="white")
         self.canvas_frame.grid(row=0, column=1, padx=10, pady=10,
                                sticky="nsew")
-        self.canvas_frame.grid_propagate(False)
 
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
+        # Configure resizing behavior
+        self.grid_rowconfigure(0, weight=1)  # Allow vertical expansion
+        self.grid_columnconfigure(0, weight=1)  # Left frame
+        self.grid_columnconfigure(1, weight=3)  # Right frame
 
     def update_dropdowns(self):
         """
@@ -166,11 +121,14 @@ class GenericDataPanel(tk.Frame):
         for widget in self.canvas_frame.winfo_children():
             widget.destroy()
 
-        fig, ax = plt.subplots(figsize=(5, 3))
+        fig, ax = plt.subplots(figsize=(6, 4))
         ax.plot(x_axis, y_axis)
         ax.set_title(f"{self.name}")
         ax.set_xlabel("Time")
         ax.set_ylabel(selected_y)
+
+        # Adjust layout to prevent clipping
+        fig.tight_layout()
 
         canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
         canvas.draw()

@@ -11,7 +11,7 @@ class UI(tk.Tk):
         super().__init__()
         self.panel_var = tk.StringVar()
         self.title("Monitoring Dashboard")
-        self.geometry("720x480+0+0")
+        self.geometry("1280x480+0+0")
         # self.state("zoomed")
 
         self.panels = {}
@@ -27,7 +27,8 @@ class UI(tk.Tk):
         #                                  command=self.create_panel_from_template)
         # self.crete_new_panel.grid(row=0, column=1, padx=10, pady=10)
 
-        self.panel_dropdown = ttk.Combobox(self, textvariable=self.panel_var)
+        self.panel_dropdown = ttk.Combobox(self, textvariable=self.panel_var,
+                                           width=50)
         self.panel_dropdown.grid(row=0, column=0, columnspan=1, padx=10,
                                  pady=10)
         self.panel_dropdown.bind("<<ComboboxSelected>>",
@@ -118,7 +119,7 @@ class UI(tk.Tk):
         drop_down_label.pack()
         drop_down = ttk.Combobox(top)
         drop_down.pack()
-        drop_down['identifiers'] = list(self.panel_templates.keys())
+        drop_down['values'] = list(self.panel_templates.keys())
         name = name_entry.get()
         identifier = drop_down.get()
         schema = self.panels[identifier].schema.copy()
