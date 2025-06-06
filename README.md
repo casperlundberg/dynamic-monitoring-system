@@ -1,5 +1,5 @@
 # dynamic-monitoring-system
-Monitoring system that follows the IDL specification for an API and then generates interfaces that monitor the API and its changes over time.
+Monitoring system that follows the OpenAPI specification for an API and then generates a monitoring pipeline of payload data from instrumentation to storage and visualization.
 
 
 
